@@ -33,6 +33,7 @@ dependencies = [
  "axum-macros",
  "axum-valid",
  "constant_time_eq",
+ "dotenvy",
  "jsonwebtoken",
  "phonenumber",
  "regex",
