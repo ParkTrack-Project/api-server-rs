@@ -101,29 +101,6 @@ impl Authenticated for PartnerAuthenticated {
     }
 }
 
-impl PartnerAuthenticated {
-    fn view_scope(&self) -> Scope {
-        match &self {
-            PartnerAuthenticated::Admin { .. } => Scope::PartnerAll,
-            PartnerAuthenticated::Member { view_scope, .. } => *view_scope,
-        }
-    }
-
-    fn write_scope(&self) -> Scope {
-        match &self {
-            PartnerAuthenticated::Admin { .. } => Scope::PartnerAll,
-            PartnerAuthenticated::Member { write_scope, .. } => *write_scope,
-        }
-    }
-
-    fn delete_scope(&self) -> Scope {
-        match &self {
-            PartnerAuthenticated::Admin { .. } => Scope::PartnerAll,
-            PartnerAuthenticated::Member { delete_scope, .. } => *delete_scope,
-        }
-    }
-}
-
 pub struct AuthenticatedOrApiToken(pub PublicAuthenticated);
 
 impl FromRequestParts<ApiState> for AuthenticatedOrApiToken {
