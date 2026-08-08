@@ -30,6 +30,6 @@ pub async fn version() -> impl IntoResponse {
 
 pub fn system_routes() -> Router<ApiState> {
     Router::new()
-        .route("", get(health_check))
-        .route("", get(version))
+        .route("/health", get(health_check))
+        .route("/version", get(version))
 }
