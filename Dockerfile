@@ -1,4 +1,4 @@
-FROM rust:1 AS build-env
+FROM rust:1-slim-bookworm AS build-env
 WORKDIR /app
 COPY Cargo.lock Cargo.toml /app/
 COPY src /app/src/
