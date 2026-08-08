@@ -42,6 +42,18 @@ impl ApiState {
             inner: Arc::new(inner)
         }
     }
+
+    pub async fn new(
+        config: ApiConfig, 
+        decoding_key: DecodingKey, 
+        pool: PgPool
+    ) -> Self {
+        Self {
+            inner: Arc::new(ApiStateInner {
+                config, decoding_key, pool
+            })
+        }
+    }
 }
 
 #[derive(Clone)]
