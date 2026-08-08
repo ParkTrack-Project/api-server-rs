@@ -79,7 +79,8 @@ pub struct ApiConfig {
 
 impl ApiConfig {
     pub fn from_env() -> Self {
-        dotenvy::dotenv().expect("Failed to load .env file");
+        // TODO: find a proper way to manage env variables or remove loading from file
+        // dotenvy::dotenv().expect("Failed to load .env file");
 
         use std::env;
 
