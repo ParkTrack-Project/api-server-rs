@@ -35,23 +35,21 @@ impl ApiState {
         let inner = ApiStateInner {
             config,
             decoding_key,
-            pool
+            pool,
         };
 
-        Self { 
-            inner: Arc::new(inner)
+        Self {
+            inner: Arc::new(inner),
         }
     }
 
-    pub async fn new(
-        config: ApiConfig, 
-        decoding_key: DecodingKey, 
-        pool: PgPool
-    ) -> Self {
+    pub async fn new(config: ApiConfig, decoding_key: DecodingKey, pool: PgPool) -> Self {
         Self {
             inner: Arc::new(ApiStateInner {
-                config, decoding_key, pool
-            })
+                config,
+                decoding_key,
+                pool,
+            }),
         }
     }
 }
@@ -85,14 +83,11 @@ impl ApiConfig {
 
         use std::env;
 
-        let api_token = env::var("API_TOKEN")
-            .expect("API_TOKEN must be set");
+        let api_token = env::var("API_TOKEN").expect("API_TOKEN must be set");
 
-        let database_url = env::var("DATABASE_URL")
-            .expect("DATABASE_URL must be set");
+        let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
 
-        let jwt_secret = env::var("JWT_SECRET")
-            .expect("JWT_SECRET must be set");
+        let jwt_secret = env::var("JWT_SECRET").expect("JWT_SECRET must be set");
 
         let jwt_expire_seconds: u32 = env::var("JWT_EXPIRE_SECONDS")
             .expect("JWT_EXPIRE_SECONDS must be set")
@@ -116,8 +111,7 @@ impl ApiConfig {
             .unwrap_or("0".to_string())
             .parse()
             .expect("SMTP_USE_SSL must be a boolean");
-        let password_reset_login_url = env::var("PASSWORD_RESET_LOGIN_URL")
-            .unwrap_or_default();
+        let password_reset_login_url = env::var("PASSWORD_RESET_LOGIN_URL").unwrap_or_default();
         let password_reset_ttl_minutes: u32 = env::var("PASSWORD_TTL_RESET_MINUTES")
             .expect("PASSWORD_TTL_RESET_MINUTES must be set")
             .parse()
@@ -142,7 +136,7 @@ impl ApiConfig {
             smtp_use_ssl,
             password_reset_return_token,
             password_reset_ttl_minutes,
-            password_reset_login_url
+            password_reset_login_url,
         }
     }
 }

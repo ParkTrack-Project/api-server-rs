@@ -70,5 +70,5 @@ impl UpdateCamera {
 #[derive(Debug, Validate, Deserialize)]
 pub struct CameraId {
     #[validate(range(exclusive_min = 0))]
-    pub camera_id: i32
+    pub camera_id: i32,
 }

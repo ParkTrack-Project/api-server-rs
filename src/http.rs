@@ -1,8 +1,11 @@
-use axum::{Json, extract::State, http::StatusCode, response::IntoResponse};
+use axum::{Json, Router, extract::State, http::StatusCode, response::IntoResponse, routing::get};
 use axum_macros::debug_handler;
 use serde_json::json;
 
-use crate::{error::{ApiError, ApiResult}, state::ApiState};
+use crate::{
+    error::{ApiError, ApiResult},
+    state::ApiState,
+};
 
 pub mod authorization;
 mod middleware;
@@ -11,18 +14,22 @@ mod token;
 mod validation;
 
 #[debug_handler]
-pub async fn health_check(
-    State(state): State<ApiState>
-) -> ApiResult<()> {
+pub async fn health_check(State(state): State<ApiState>) -> ApiResult<()> {
     sqlx::query("SELECT 1")
         .execute(&state.pool)
         .await
         .map_err(|_| ApiError::ServiceUnavailable("unhealthy".to_string()))?;
-    
+
     Ok(())
 }
 
 #[debug_handler]
 pub async fn version() -> impl IntoResponse {
     Json(json!({ "api_version": "3.0" }))
+}
+
+pub fn system_routes() -> Router<ApiState> {
+    Router::new()
+        .route("", get(health_check))
+        .route("", get(version))
 }

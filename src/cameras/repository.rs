@@ -8,9 +8,12 @@ use time::OffsetDateTime;
 use crate::{
     cameras::{
         models::{
-            CAMERA_COLUMNS, CAMERA_MAP_ITEM_COLUMNS, CAMERA_NEXT_COLUMNS, CameraIden, CameraMapItemRow, CameraNextRow, CameraRow, CreateCameraRow,
-        }, requests, responses,
-    }, error::{ApiError, ApiResult},
+            CAMERA_COLUMNS, CAMERA_MAP_ITEM_COLUMNS, CAMERA_NEXT_COLUMNS, CameraIden,
+            CameraMapItemRow, CameraNextRow, CameraRow, CreateCameraRow,
+        },
+        requests, responses,
+    },
+    error::{ApiError, ApiResult},
 };
 
 #[derive(Debug, Clone, Copy)]
@@ -126,7 +129,7 @@ pub async fn create_camera(
 
             return ApiError::InternalError(
                 anyhow::Error::from(e)
-                    .context(format!("creating new camera with title {}", query.title))
+                    .context(format!("creating new camera with title {}", query.title)),
             );
         })
 }
@@ -134,7 +137,7 @@ pub async fn create_camera(
 pub async fn get_camera(
     pool: &PgPool,
     camera_id: i32,
-    scope: CameraAccess
+    scope: CameraAccess,
 ) -> ApiResult<Option<CameraRow>> {
     let (sql, values) = sea_query::Query::select()
         .from(CameraIden::Table)
@@ -153,8 +156,8 @@ pub async fn update_camera(
     pool: &PgPool,
     camera_id: i32,
     query: requests::UpdateCamera,
-    scope: CameraAccess
-) -> ApiResult<Option<CameraRow>>{
+    scope: CameraAccess,
+) -> ApiResult<Option<CameraRow>> {
     let (sql, values) = sea_query::Query::update()
         .table(CameraIden::Table)
         .cond_where(scope_condition(scope))
@@ -163,19 +166,20 @@ pub async fn update_camera(
             [
                 query.title.map(|v| (CameraIden::Title, v.into())),
                 query.source.map(|v| (CameraIden::Source, v.into())),
-                query.image_width.map(|v| (CameraIden::ImageWidth, v.into())),
-                query.image_height.map(|v| (CameraIden::ImageHeight, v.into())),
+                query
+                    .image_width
+                    .map(|v| (CameraIden::ImageWidth, v.into())),
+                query
+                    .image_height
+                    .map(|v| (CameraIden::ImageHeight, v.into())),
                 query.calib.map(|v| (CameraIden::Calib, v.into())),
                 query.latitude.map(|v| (CameraIden::Latitude, v.into())),
-                query.longitude.map(|v| (CameraIden::Longitude, v.into()))
+                query.longitude.map(|v| (CameraIden::Longitude, v.into())),
             ]
             .into_iter()
-            .flatten()
+            .flatten(),
         )
-        .returning(
-            sea_query::Query::returning()
-                .columns(CAMERA_COLUMNS)
-        )
+        .returning(sea_query::Query::returning().columns(CAMERA_COLUMNS))
         .to_owned()
         .build_sqlx(PostgresQueryBuilder);
 
@@ -186,11 +190,7 @@ pub async fn update_camera(
         .map_err(ApiError::from)
 }
 
-pub async fn delete_camera(
-    pool: &PgPool,
-    camera_id: i32,
-    scope: CameraAccess
-) -> ApiResult<()> {
+pub async fn delete_camera(pool: &PgPool, camera_id: i32, scope: CameraAccess) -> ApiResult<()> {
     let (sql, values) = sea_query::Query::delete()
         .from_table(CameraIden::Table)
         .cond_where(scope_condition(scope))
@@ -207,7 +207,7 @@ pub async fn delete_camera(
         return Err(ApiError::NotFound(format!("camera with id {camera_id}")));
     }
 
-    return Ok(())
+    Ok(())
 }
 
 fn base_list_query(
@@ -242,7 +242,9 @@ fn scope_condition(scope: CameraAccess) -> sea_query::Condition {
     match scope {
         CameraAccess::All => condition,
         CameraAccess::Public => condition.add(Expr::col(CameraIden::PartnerId).is_null()),
-        CameraAccess::PublicOwned { user_id } => condition.add(Expr::col(CameraIden::CreatedByUserId).eq(user_id)),
+        CameraAccess::PublicOwned { user_id } => {
+            condition.add(Expr::col(CameraIden::CreatedByUserId).eq(user_id))
+        }
         CameraAccess::Partner { partner_id } => {
             condition.add(Expr::col(CameraIden::PartnerId).eq(partner_id))
         }

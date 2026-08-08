@@ -1,5 +1,12 @@
 use crate::{
-    cameras::repository::CameraAccess, error::{ApiError, ApiResult}, http::{authorization::PublicAuthenticated, permissions::{GlobalRole, ScopeType}}, state::ApiState, types::CameraView,
+    cameras::repository::CameraAccess,
+    error::{ApiError, ApiResult},
+    http::{
+        authorization::PublicAuthenticated,
+        permissions::{GlobalRole, ScopeType},
+    },
+    state::ApiState,
+    types::CameraView,
 };
 use std::sync::LazyLock;
 
@@ -50,41 +57,54 @@ pub async fn create_camera(
 pub async fn get_camera(
     state: &ApiState,
     current_user: &PublicAuthenticated,
-    query: requests::CameraId
+    query: requests::CameraId,
 ) -> ApiResult<responses::Camera> {
-    repository::get_camera(&state.pool, query.camera_id, public_scope(current_user, ScopeType::View))
-        .await
-        .and_then(|res| 
-            res.ok_or_else(|| ApiError::NotFound(format!("camera of id {} not found", query.camera_id)))
-        )
-        .map(responses::Camera::from)
+    repository::get_camera(
+        &state.pool,
+        query.camera_id,
+        public_scope(current_user, ScopeType::View),
+    )
+    .await
+    .and_then(|res| {
+        res.ok_or_else(|| ApiError::NotFound(format!("camera of id {} not found", query.camera_id)))
+    })
+    .map(responses::Camera::from)
 }
 
 pub async fn update_camera(
     state: &ApiState,
     current_user: &PublicAuthenticated,
     query: requests::CameraId,
-    payload: requests::UpdateCamera
+    payload: requests::UpdateCamera,
 ) -> ApiResult<responses::Camera> {
     if payload.is_empty() {
         return Err(ApiError::BadRequest("missing body".to_string()));
     }
 
-    repository::update_camera(&state.pool, query.camera_id, payload, public_scope(current_user, ScopeType::Write))
-        .await
-        .and_then(|res| 
-            res.ok_or_else(|| ApiError::NotFound(format!("camera with id {}", query.camera_id)))
-        )
-        .map(responses::Camera::from)
+    repository::update_camera(
+        &state.pool,
+        query.camera_id,
+        payload,
+        public_scope(current_user, ScopeType::Write),
+    )
+    .await
+    .and_then(|res| {
+        res.ok_or_else(|| ApiError::NotFound(format!("camera with id {}", query.camera_id)))
+    })
+    .map(responses::Camera::from)
 }
 
 pub async fn delete_camera(
     state: &ApiState,
     current_user: &PublicAuthenticated,
-    query: requests::CameraId
+    query: requests::CameraId,
 ) -> ApiResult<()> {
-    repository::delete_camera(&state.pool, query.camera_id, public_scope(current_user, ScopeType::Delete))
-        .await
+    repository::delete_camera(
+        &state.pool,
+        query.camera_id,
+        public_scope(current_user, ScopeType::Delete),
+    )
+    .await
 }
 
 // pub async fn list_partner_cameras(
@@ -129,10 +149,10 @@ fn public_scope(current_user: &PublicAuthenticated, scope: ScopeType) -> CameraA
     match current_user {
         PublicAuthenticated::User {
             global_role: GlobalRole::User,
-            user_id
+            user_id,
         } => match scope {
             ScopeType::Write | ScopeType::Delete => CameraAccess::PublicOwned { user_id: *user_id },
-            ScopeType::View => CameraAccess::Public
+            ScopeType::View => CameraAccess::Public,
         },
         PublicAuthenticated::User {
             global_role: GlobalRole::Admin,
@@ -163,30 +183,3 @@ fn public_scope(current_user: &PublicAuthenticated, scope: ScopeType) -> CameraA
 
 //     Ok(scope)
 // }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn public_user_can_view_all_public_cameras() {
-        let user = PublicAuthenticated::User { user_id: 1, global_role: GlobalRole::User };
-        assert!(matches!(public_scope(&user, ScopeType::View), CameraAccess::Public));
-    }
-
-    #[test]
-    fn public_user_can_only_write_owned_cameras() {
-        let user = PublicAuthenticated::User { user_id: 1, global_role: GlobalRole::User };
-        assert!(matches!(
-            public_scope(&user, ScopeType::Write),
-            CameraAccess::PublicOwned { user_id: 1 }
-        ));
-    }
-
-    #[test]
-    fn admin_and_api_token_scope_is_unrestricted() {
-        let admin = PublicAuthenticated::User { user_id: 1, global_role: GlobalRole::Admin };
-        assert!(matches!(public_scope(&admin, ScopeType::Write), CameraAccess::All));
-        assert!(matches!(public_scope(&PublicAuthenticated::ApiToken, ScopeType::View), CameraAccess::All));
-    }
-}

@@ -129,7 +129,7 @@ pub struct CreateCamera {
 impl From<CreateCameraRow> for CreateCamera {
     fn from(row: CreateCameraRow) -> Self {
         Self {
-            camera_id: row.camera_id
+            camera_id: row.camera_id,
         }
     }
 }

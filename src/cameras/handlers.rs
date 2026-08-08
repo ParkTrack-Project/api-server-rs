@@ -1,5 +1,8 @@
 use axum::{
-    Json, extract::{Path, Query, State}, http::StatusCode, response::IntoResponse,
+    Json,
+    extract::{Path, Query, State},
+    http::StatusCode,
+    response::IntoResponse,
 };
 use axum_macros::debug_handler;
 use axum_valid::Valid;
@@ -56,7 +59,7 @@ pub async fn get_camera(
     AuthenticatedOrApiToken(current_user): AuthenticatedOrApiToken,
     State(state): State<ApiState>,
     Valid(Path(camera_id)): Valid<Path<requests::CameraId>>,
-) -> ApiResult<responses::Camera>{
+) -> ApiResult<responses::Camera> {
     current_user.require(&[Permission::CamerasView])?;
 
     service::get_camera(&state, &current_user, camera_id).await
@@ -68,7 +71,7 @@ pub async fn update_camera(
     AuthenticatedOrApiToken(current_user): AuthenticatedOrApiToken,
     State(state): State<ApiState>,
     Valid(Path(camera_id)): Valid<Path<requests::CameraId>>,
-    Valid(Json(payload)): Valid<Json<requests::UpdateCamera>>
+    Valid(Json(payload)): Valid<Json<requests::UpdateCamera>>,
 ) -> ApiResult<responses::Camera> {
     current_user.require(&[Permission::CamerasWrite])?;
 
@@ -80,7 +83,7 @@ pub async fn update_camera(
 pub async fn delete_camera(
     AuthenticatedOrApiToken(current_user): AuthenticatedOrApiToken,
     State(state): State<ApiState>,
-    Valid(Path(camera_id)): Valid<Path<requests::CameraId>>
+    Valid(Path(camera_id)): Valid<Path<requests::CameraId>>,
 ) -> ApiResult<impl IntoResponse> {
     current_user.require(&[Permission::CamerasDelete])?;
 

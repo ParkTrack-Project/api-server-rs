@@ -39,7 +39,7 @@ pub enum ApiError {
     InternalError(#[from] anyhow::Error),
 
     #[error("{0}")]
-    ServiceUnavailable(String)
+    ServiceUnavailable(String),
 }
 
 impl IntoResponse for ApiError {
@@ -55,7 +55,7 @@ impl IntoResponse for ApiError {
             ApiError::ValidationError(_) => StatusCode::BAD_REQUEST,
             ApiError::InternalError(_) => StatusCode::INTERNAL_SERVER_ERROR,
             ApiError::Conflict(_) => StatusCode::CONFLICT,
-            ApiError::ServiceUnavailable(_) => StatusCode::SERVICE_UNAVAILABLE
+            ApiError::ServiceUnavailable(_) => StatusCode::SERVICE_UNAVAILABLE,
         };
 
         let body = Json(json!({

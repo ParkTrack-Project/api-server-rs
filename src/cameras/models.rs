@@ -98,5 +98,5 @@ pub const CAMERA_NEXT_COLUMNS: [CameraIden; 7] = [
 
 #[derive(Debug, FromRow)]
 pub struct CreateCameraRow {
-    pub camera_id: i32
+    pub camera_id: i32,
 }
