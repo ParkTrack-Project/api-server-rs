@@ -19,6 +19,7 @@ pub trait Authenticated {
     fn require(&self, permissions: &[Permission]) -> ApiResult<()>;
 }
 
+#[derive(Debug)]
 pub enum PublicAuthenticated {
     User {
         user_id: i32,
@@ -51,6 +52,7 @@ impl Authenticated for PublicAuthenticated {
     }
 }
 
+#[derive(Debug)]
 pub enum PartnerAuthenticated {
     Admin {
         user_id: i32,

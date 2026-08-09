@@ -14,17 +14,22 @@ use super::repository;
 use super::requests;
 use super::responses;
 
+#[tracing::instrument(skip(state), err)]
 pub async fn list_public_cameras(
     state: &ApiState,
     current_user: &PublicAuthenticated,
     query: requests::ListCamerasQuery,
 ) -> ApiResult<responses::ListCameras> {
-    list_cameras_with_scope(state, query, public_scope(current_user, ScopeType::View)).await
+    let result = list_cameras_with_scope(state, query, public_scope(current_user, ScopeType::View))
+        .await?;
+
+    Ok(result)
 }
 
 static CAMERA_CURSOR: LazyLock<tokio::sync::Mutex<i32>> =
     LazyLock::new(|| tokio::sync::Mutex::new(0));
 
+#[tracing::instrument(skip(state), err)]
 pub async fn next_camera(state: &ApiState) -> ApiResult<responses::CameraNext> {
     let idx = {
         let mut cursor = CAMERA_CURSOR.lock().await;
@@ -34,11 +39,14 @@ pub async fn next_camera(state: &ApiState) -> ApiResult<responses::CameraNext> {
         idx
     };
 
-    repository::get_next_camera(&state.pool, idx)
+    let result = repository::get_next_camera(&state.pool, idx)
         .await
-        .map(responses::CameraNext::from)
+        .map(responses::CameraNext::from)?;
+
+    Ok(result)
 }
 
+#[tracing::instrument(skip(state), err)]
 pub async fn create_camera(
     state: &ApiState,
     current_user: &PublicAuthenticated,
@@ -49,17 +57,22 @@ pub async fn create_camera(
         PublicAuthenticated::ApiToken => None,
     };
 
-    repository::create_camera(&state.pool, payload, user_id)
+    let result = repository::create_camera(&state.pool, payload, user_id)
         .await
-        .map(responses::CreateCamera::from)
+        .map(responses::CreateCamera::from)?;
+
+    tracing::info!(camera_id = result.camera_id, "camera created");
+
+    Ok(result)
 }
 
+#[tracing::instrument(skip(state), err)]
 pub async fn get_camera(
     state: &ApiState,
     current_user: &PublicAuthenticated,
     query: requests::CameraId,
 ) -> ApiResult<responses::Camera> {
-    repository::get_camera(
+    let result = repository::get_camera(
         &state.pool,
         query.camera_id,
         public_scope(current_user, ScopeType::View),
@@ -68,9 +81,12 @@ pub async fn get_camera(
     .and_then(|res| {
         res.ok_or_else(|| ApiError::NotFound(format!("camera of id {} not found", query.camera_id)))
     })
-    .map(responses::Camera::from)
+    .map(responses::Camera::from)?;
+
+    Ok(result)
 }
 
+#[tracing::instrument(skip(state), err)]
 pub async fn update_camera(
     state: &ApiState,
     current_user: &PublicAuthenticated,
@@ -81,7 +97,7 @@ pub async fn update_camera(
         return Err(ApiError::BadRequest("missing body".to_string()));
     }
 
-    repository::update_camera(
+    let result = repository::update_camera(
         &state.pool,
         query.camera_id,
         payload,
@@ -91,20 +107,29 @@ pub async fn update_camera(
     .and_then(|res| {
         res.ok_or_else(|| ApiError::NotFound(format!("camera with id {}", query.camera_id)))
     })
-    .map(responses::Camera::from)
+    .map(responses::Camera::from)?;
+
+    tracing::info!(camera_id = query.camera_id, "camera updated");
+
+    Ok(result)
 }
 
+#[tracing::instrument(skip(state), err)]
 pub async fn delete_camera(
     state: &ApiState,
     current_user: &PublicAuthenticated,
     query: requests::CameraId,
 ) -> ApiResult<()> {
-    repository::delete_camera(
+    let _ = repository::delete_camera(
         &state.pool,
         query.camera_id,
         public_scope(current_user, ScopeType::Delete),
     )
-    .await
+    .await?;
+
+    tracing::info!(camera_id = query.camera_id, "camera deleted");
+
+    Ok(())
 }
 
 // pub async fn list_partner_cameras(
