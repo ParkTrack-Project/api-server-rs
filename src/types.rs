@@ -15,16 +15,16 @@ pub struct Bbox {
 
 impl Bbox {
     pub fn new(
-        min_longitude: f32, 
+        min_longitude: f32,
         min_latitude: f32,
         max_longitude: f32,
-        max_latitude: f32
+        max_latitude: f32,
     ) -> Self {
         Self {
             min_longitude,
             min_latitude,
             max_longitude,
-            max_latitude
+            max_latitude,
         }
     }
 }
