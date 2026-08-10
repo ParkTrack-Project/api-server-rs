@@ -21,9 +21,9 @@ jobs:
       matrix:
         image:
           - name: app
-            dockerfile: Dockerfile
+            dockerfile: ./Dockerfile
           - name: migrate
-            dockerfile: Dockerfile.migrate
+            dockerfile: ./Dockerfile.migrate
 
     steps:
       - name: Checkout
@@ -64,7 +64,7 @@ jobs:
         uses: docker/build-push-action@v7
         with:
           context: .
-          file: ./Dockerfile.${{ matrix.image.dockerfile }}
+          file: ${{ matrix.image.dockerfile }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
