@@ -1,3 +1,17 @@
+INSERT INTO partners (
+    partner_id,
+    legal_name,
+    slug,
+    contact_email,
+    contact_phone
+) VALUES (
+    1,
+    'legal_name_1',
+    'slug_1',
+    'contact@mail.example',
+    '88005553535'
+);
+
 INSERT INTO cameras (
     title, source, image_width, image_height, 
     calib, latitude, longitude, partner_id, created_by_user_id,
