@@ -1,0 +1,39 @@
+name: Run migrations seqwall test
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: migrations_test_db
+        ports:
+          - 5432:5432
+
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 'stable'
+      
+      - name: Install seqwall
+        run: go install github.com/realkarych/seqwall@latest
+      
+      - name: Run tests
+        env:
+          TEST_DB_URL: postgres://postgres:password@localhost:5432/migrations_test_db
+        run: |
+          seqwall staircase \
+            --postgres-url "$TEST_DB_URL" \
+            --migrations-path ./migrations \
+            --migrations-extension ."up.sql" \
+            --upgrade "bash scripts/ci-up-one.sh {current_migration} \"$TEST_DB_URL\"" \
+            --downgrade "bash scripts/ci-down-one.sh {current_migration} \"$TEST_DB_URL\""
+        
