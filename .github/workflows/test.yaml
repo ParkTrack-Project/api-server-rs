@@ -1,0 +1,25 @@
+name: Run api-server tests
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: master_test_db
+        ports:
+          - 5432:5432
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.94.0
+      - name: Run tests
+        env:
+          DATABASE_URL: postgres://postgres:password@localhost:5432/master_test_db
+        run: cargo test
+        
