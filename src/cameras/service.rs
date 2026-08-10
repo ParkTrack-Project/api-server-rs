@@ -120,12 +120,16 @@ pub async fn delete_camera(
     current_user: &PublicAuthenticated,
     query: requests::CameraId,
 ) -> ApiResult<()> {
-    let _ = repository::delete_camera(
+    let rows_affected = repository::delete_camera(
         &state.pool,
         query.camera_id,
         public_scope(current_user, ScopeType::Delete),
     )
     .await?;
+
+    if rows_affected == 0 {
+        return Err(ApiError::NotFound(format!("camera with id {}", query.camera_id)));
+    }
 
     tracing::info!(camera_id = query.camera_id, "camera deleted");
 

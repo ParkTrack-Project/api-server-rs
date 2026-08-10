@@ -29,8 +29,8 @@ pub struct CameraRow {
     pub image_width: i32,
     pub image_height: i32,
     pub calib: Option<serde_json::Value>,
-    pub latitude: f32,
-    pub longitude: f32,
+    pub latitude: f64,
+    pub longitude: f64,
     pub partner_id: Option<i32>,
     pub created_by_user_id: Option<i32>,
     pub is_active: bool,
@@ -60,8 +60,8 @@ pub const CAMERA_COLUMNS: [Cameras; 14] = [
 pub struct CameraMapItemRow {
     pub camera_id: i32,
     pub title: String,
-    pub latitude: f32,
-    pub longitude: f32,
+    pub latitude: f64,
+    pub longitude: f64,
     pub partner_id: Option<i32>,
     pub is_active: bool,
 }

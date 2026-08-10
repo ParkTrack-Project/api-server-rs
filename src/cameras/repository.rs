@@ -190,7 +190,7 @@ pub async fn update_camera(
         .map_err(ApiError::from)
 }
 
-pub async fn delete_camera(pool: &PgPool, camera_id: i32, scope: CameraAccess) -> ApiResult<()> {
+pub async fn delete_camera(pool: &PgPool, camera_id: i32, scope: CameraAccess) -> ApiResult<u64> {
     let (sql, values) = sea_query::Query::delete()
         .from_table(Cameras::Table)
         .cond_where(scope_condition(scope))
@@ -203,11 +203,7 @@ pub async fn delete_camera(pool: &PgPool, camera_id: i32, scope: CameraAccess) -
         .with_context(|| format!("deleting camera with id {}", camera_id))
         .map_err(ApiError::from)?;
 
-    if result.rows_affected() == 0 {
-        return Err(ApiError::NotFound(format!("camera with id {camera_id}")));
-    }
-
-    Ok(())
+    Ok(result.rows_affected())
 }
 
 fn base_list_query(

@@ -120,10 +120,10 @@ mod repository {
         let scope = CameraAccess::All;
 
         // Act
-        let res = repository::delete_camera(&pool, 67, scope).await;
+        let res = repository::delete_camera(&pool, 67, scope).await?;
 
         // Assert
-        assert!(if let Err(ApiError::NotFound(_)) = res {true} else {false});
+        assert_eq!(res, 0);
         Ok(())
     }
 
@@ -134,10 +134,10 @@ mod repository {
         let scope = CameraAccess::Public;
 
         // Act
-        let res = repository::delete_camera(&pool, 7, scope).await;
+        let res = repository::delete_camera(&pool, 7, scope).await?;
         
         // Assert
-        assert!(if let Err(ApiError::NotFound(_)) = res {true} else {false});
+        assert_eq!(res, 0);
         Ok(())
     }
 
@@ -148,10 +148,10 @@ mod repository {
         let scope = CameraAccess::Public;
 
         // Act
-        let res = repository::get_camera(&pool, 7, scope).await;
+        let res = repository::get_camera(&pool, 7, scope).await?;
         
         // Assert
-        assert!(if let Err(ApiError::NotFound(_)) = res {true} else {false});
+        assert!(if let None = res {true} else {false});
         Ok(())
     }
 }
