@@ -8,7 +8,7 @@ use crate::{
 };
 
 pub mod authorization;
-mod middleware;
+pub mod middleware;
 pub mod permissions;
 mod token;
 mod validation;
