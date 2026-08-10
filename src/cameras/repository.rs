@@ -8,7 +8,7 @@ use time::OffsetDateTime;
 use crate::{
     cameras::{
         models::{
-            CAMERA_COLUMNS, CAMERA_MAP_ITEM_COLUMNS, CAMERA_NEXT_COLUMNS, CameraIden,
+            CAMERA_COLUMNS, CAMERA_MAP_ITEM_COLUMNS, CAMERA_NEXT_COLUMNS, Cameras,
             CameraMapItemRow, CameraNextRow, CameraRow, CreateCameraRow,
         },
         requests, responses,
@@ -76,8 +76,8 @@ pub async fn get_next_camera(pool: &PgPool, idx: i32) -> ApiResult<CameraNextRow
 
 pub async fn count_cameras(pool: &PgPool) -> ApiResult<i32> {
     let (sql, values) = sea_query::Query::select()
-        .from(CameraIden::Table)
-        .expr(Func::count(Expr::col(CameraIden::CameraId)))
+        .from(Cameras::Table)
+        .expr(Func::count(Expr::col(Cameras::CameraId)))
         .build_sqlx(PostgresQueryBuilder);
 
     sqlx::query_scalar_with::<_, i32, _>(sqlx::AssertSqlSafe(sql), values)
@@ -93,16 +93,16 @@ pub async fn create_camera(
     user_id: Option<i32>,
 ) -> ApiResult<CreateCameraRow> {
     let (sql, values) = sea_query::Query::insert()
-        .into_table(CameraIden::Table)
+        .into_table(Cameras::Table)
         .columns([
-            CameraIden::Title,
-            CameraIden::Source,
-            CameraIden::ImageWidth,
-            CameraIden::ImageHeight,
-            CameraIden::Calib,
-            CameraIden::Latitude,
-            CameraIden::Longitude,
-            CameraIden::CreatedByUserId,
+            Cameras::Title,
+            Cameras::Source,
+            Cameras::ImageWidth,
+            Cameras::ImageHeight,
+            Cameras::Calib,
+            Cameras::Latitude,
+            Cameras::Longitude,
+            Cameras::CreatedByUserId,
         ])
         .values_panic([
             query.title.clone().into(),
@@ -114,7 +114,7 @@ pub async fn create_camera(
             query.longitude.into(),
             user_id.into(),
         ])
-        .returning_col(CameraIden::CameraId)
+        .returning_col(Cameras::CameraId)
         .build_sqlx(PostgresQueryBuilder);
 
     sqlx::query_as_with::<_, CreateCameraRow, _>(sqlx::AssertSqlSafe(sql), values)
@@ -140,9 +140,9 @@ pub async fn get_camera(
     scope: CameraAccess,
 ) -> ApiResult<Option<CameraRow>> {
     let (sql, values) = sea_query::Query::select()
-        .from(CameraIden::Table)
+        .from(Cameras::Table)
         .cond_where(scope_condition(scope))
-        .and_where(Expr::col(CameraIden::CameraId).eq(camera_id))
+        .and_where(Expr::col(Cameras::CameraId).eq(camera_id))
         .build_sqlx(PostgresQueryBuilder);
 
     sqlx::query_as_with::<_, CameraRow, _>(sqlx::AssertSqlSafe(sql), values)
@@ -159,22 +159,22 @@ pub async fn update_camera(
     scope: CameraAccess,
 ) -> ApiResult<Option<CameraRow>> {
     let (sql, values) = sea_query::Query::update()
-        .table(CameraIden::Table)
+        .table(Cameras::Table)
         .cond_where(scope_condition(scope))
-        .and_where(Expr::col(CameraIden::CameraId).eq(camera_id))
+        .and_where(Expr::col(Cameras::CameraId).eq(camera_id))
         .values(
             [
-                query.title.map(|v| (CameraIden::Title, v.into())),
-                query.source.map(|v| (CameraIden::Source, v.into())),
+                query.title.map(|v| (Cameras::Title, v.into())),
+                query.source.map(|v| (Cameras::Source, v.into())),
                 query
                     .image_width
-                    .map(|v| (CameraIden::ImageWidth, v.into())),
+                    .map(|v| (Cameras::ImageWidth, v.into())),
                 query
                     .image_height
-                    .map(|v| (CameraIden::ImageHeight, v.into())),
-                query.calib.map(|v| (CameraIden::Calib, v.into())),
-                query.latitude.map(|v| (CameraIden::Latitude, v.into())),
-                query.longitude.map(|v| (CameraIden::Longitude, v.into())),
+                    .map(|v| (Cameras::ImageHeight, v.into())),
+                query.calib.map(|v| (Cameras::Calib, v.into())),
+                query.latitude.map(|v| (Cameras::Latitude, v.into())),
+                query.longitude.map(|v| (Cameras::Longitude, v.into())),
             ]
             .into_iter()
             .flatten(),
@@ -192,9 +192,9 @@ pub async fn update_camera(
 
 pub async fn delete_camera(pool: &PgPool, camera_id: i32, scope: CameraAccess) -> ApiResult<()> {
     let (sql, values) = sea_query::Query::delete()
-        .from_table(CameraIden::Table)
+        .from_table(Cameras::Table)
         .cond_where(scope_condition(scope))
-        .and_where(Expr::col(CameraIden::CameraId).eq(camera_id))
+        .and_where(Expr::col(Cameras::CameraId).eq(camera_id))
         .build_sqlx(PostgresQueryBuilder);
 
     let result = sqlx::query_with(sqlx::AssertSqlSafe(sql), values)
@@ -215,21 +215,21 @@ fn base_list_query(
     scope: CameraAccess,
 ) -> sea_query::SelectStatement {
     sea_query::Query::select()
-        .from(CameraIden::Table)
+        .from(Cameras::Table)
         .cond_where(scope_condition(scope))
-        .order_by(CameraIden::CameraId, sea_query::Order::Asc)
+        .order_by(Cameras::CameraId, sea_query::Order::Asc)
         .apply_if(query.q.as_deref(), |query, v| {
-            query.and_where(Expr::col(CameraIden::Title).like(format!("%{v}%")));
+            query.and_where(Expr::col(Cameras::Title).like(format!("%{v}%")));
         })
         .apply_if(query.is_active, |query, v| {
-            query.and_where(Expr::col(CameraIden::IsActive).eq(v));
+            query.and_where(Expr::col(Cameras::IsActive).eq(v));
         })
         .apply_if(query.bbox.as_ref(), |query, v| {
             query.cond_where(
                 Cond::all()
-                    .add(Expr::col(CameraIden::Latitude).between(v.min_latitude, v.max_latitude))
+                    .add(Expr::col(Cameras::Latitude).between(v.min_latitude, v.max_latitude))
                     .add(
-                        Expr::col(CameraIden::Longitude).between(v.min_longitude, v.max_longitude),
+                        Expr::col(Cameras::Longitude).between(v.min_longitude, v.max_longitude),
                     ),
             );
         })
@@ -241,18 +241,18 @@ fn scope_condition(scope: CameraAccess) -> sea_query::Condition {
 
     match scope {
         CameraAccess::All => condition,
-        CameraAccess::Public => condition.add(Expr::col(CameraIden::PartnerId).is_null()),
+        CameraAccess::Public => condition.add(Expr::col(Cameras::PartnerId).is_null()),
         CameraAccess::PublicOwned { user_id } => {
-            condition.add(Expr::col(CameraIden::CreatedByUserId).eq(user_id))
+            condition.add(Expr::col(Cameras::CreatedByUserId).eq(user_id))
         }
         CameraAccess::Partner { partner_id } => {
-            condition.add(Expr::col(CameraIden::PartnerId).eq(partner_id))
+            condition.add(Expr::col(Cameras::PartnerId).eq(partner_id))
         }
         CameraAccess::PartnerOwned {
             partner_id,
             user_id,
         } => condition
-            .add(Expr::col(CameraIden::PartnerId).eq(partner_id))
-            .add(Expr::col(CameraIden::CreatedByUserId).eq(user_id)),
+            .add(Expr::col(Cameras::PartnerId).eq(partner_id))
+            .add(Expr::col(Cameras::CreatedByUserId).eq(user_id)),
     }
 }
