@@ -28,7 +28,7 @@ jobs:
       
       - name: Run tests
         env:
-          TEST_DB_URL: postgres://postgres:password@localhost:5432/migrations_test_db
+          TEST_DB_URL: postgres://postgres:password@localhost:5432/migrations_test_db?sslmode=disable
         run: |
           seqwall staircase \
             --postgres-url "$TEST_DB_URL" \
