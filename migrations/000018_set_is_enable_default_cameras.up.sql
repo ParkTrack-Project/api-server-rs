@@ -1,0 +1,2 @@
+ALTER TABLE cameras
+    ALTER COLUMN is_active SET DEFAULT FALSE;

@@ -13,6 +13,22 @@ pub struct Bbox {
     pub max_latitude: f32,
 }
 
+impl Bbox {
+    pub fn new(
+        min_longitude: f32,
+        min_latitude: f32,
+        max_longitude: f32,
+        max_latitude: f32,
+    ) -> Self {
+        Self {
+            min_longitude,
+            min_latitude,
+            max_longitude,
+            max_latitude,
+        }
+    }
+}
+
 impl<'de> Deserialize<'de> for Bbox {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where

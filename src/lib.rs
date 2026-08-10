@@ -2,12 +2,12 @@ use axum::{Router, routing::get};
 
 use crate::state::ApiState;
 
-mod error;
+pub mod error;
 pub mod http;
 pub mod state;
-mod types;
+pub mod types;
 
-mod cameras;
+pub mod cameras;
 
 pub fn create_routes() -> Router<ApiState> {
     Router::new().nest(

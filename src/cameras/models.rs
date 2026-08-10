@@ -3,7 +3,7 @@ use sqlx::prelude::FromRow;
 use time::OffsetDateTime;
 
 #[derive(Iden)]
-pub enum CameraIden {
+pub enum Cameras {
     Table,
     CameraId,
     Title,
@@ -29,8 +29,8 @@ pub struct CameraRow {
     pub image_width: i32,
     pub image_height: i32,
     pub calib: Option<serde_json::Value>,
-    pub latitude: f32,
-    pub longitude: f32,
+    pub latitude: f64,
+    pub longitude: f64,
     pub partner_id: Option<i32>,
     pub created_by_user_id: Option<i32>,
     pub is_active: bool,
@@ -39,40 +39,40 @@ pub struct CameraRow {
     pub updated_at: OffsetDateTime,
 }
 
-pub const CAMERA_COLUMNS: [CameraIden; 14] = [
-    CameraIden::CameraId,
-    CameraIden::Title,
-    CameraIden::Source,
-    CameraIden::ImageWidth,
-    CameraIden::ImageHeight,
-    CameraIden::Calib,
-    CameraIden::Latitude,
-    CameraIden::Longitude,
-    CameraIden::PartnerId,
-    CameraIden::CreatedByUserId,
-    CameraIden::IsActive,
-    CameraIden::LastSnapshotAt,
-    CameraIden::CreatedAt,
-    CameraIden::UpdatedAt,
+pub const CAMERA_COLUMNS: [Cameras; 14] = [
+    Cameras::CameraId,
+    Cameras::Title,
+    Cameras::Source,
+    Cameras::ImageWidth,
+    Cameras::ImageHeight,
+    Cameras::Calib,
+    Cameras::Latitude,
+    Cameras::Longitude,
+    Cameras::PartnerId,
+    Cameras::CreatedByUserId,
+    Cameras::IsActive,
+    Cameras::LastSnapshotAt,
+    Cameras::CreatedAt,
+    Cameras::UpdatedAt,
 ];
 
 #[derive(Debug, FromRow)]
 pub struct CameraMapItemRow {
     pub camera_id: i32,
     pub title: String,
-    pub latitude: f32,
-    pub longitude: f32,
+    pub latitude: f64,
+    pub longitude: f64,
     pub partner_id: Option<i32>,
     pub is_active: bool,
 }
 
-pub const CAMERA_MAP_ITEM_COLUMNS: [CameraIden; 6] = [
-    CameraIden::CameraId,
-    CameraIden::Title,
-    CameraIden::Latitude,
-    CameraIden::Longitude,
-    CameraIden::PartnerId,
-    CameraIden::IsActive,
+pub const CAMERA_MAP_ITEM_COLUMNS: [Cameras; 6] = [
+    Cameras::CameraId,
+    Cameras::Title,
+    Cameras::Latitude,
+    Cameras::Longitude,
+    Cameras::PartnerId,
+    Cameras::IsActive,
 ];
 
 #[derive(Debug, FromRow)]
@@ -86,14 +86,14 @@ pub struct CameraNextRow {
     pub is_active: bool,
 }
 
-pub const CAMERA_NEXT_COLUMNS: [CameraIden; 7] = [
-    CameraIden::CameraId,
-    CameraIden::Source,
-    CameraIden::ImageWidth,
-    CameraIden::ImageHeight,
-    CameraIden::Calib,
-    CameraIden::PartnerId,
-    CameraIden::IsActive,
+pub const CAMERA_NEXT_COLUMNS: [Cameras; 7] = [
+    Cameras::CameraId,
+    Cameras::Source,
+    Cameras::ImageWidth,
+    Cameras::ImageHeight,
+    Cameras::Calib,
+    Cameras::PartnerId,
+    Cameras::IsActive,
 ];
 
 #[derive(Debug, FromRow)]

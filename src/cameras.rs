@@ -5,12 +5,12 @@ use axum::{
 
 use crate::state::ApiState;
 
-mod handlers;
-mod models;
-mod repository;
-mod requests;
-mod responses;
-mod service;
+pub mod handlers;
+pub mod models;
+pub mod repository;
+pub mod requests;
+pub mod responses;
+pub mod service;
 
 pub fn camera_routes() -> Router<ApiState> {
     Router::new()

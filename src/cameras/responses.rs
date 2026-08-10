@@ -12,8 +12,8 @@ pub struct Camera {
     image_width: u32,
     image_height: u32,
     calib: Option<serde_json::Value>,
-    latitude: f32,
-    longitude: f32,
+    latitude: f64,
+    longitude: f64,
     partner_id: Option<u32>,
     created_by_user_id: Option<u32>,
     is_active: bool,
@@ -53,8 +53,8 @@ impl From<CameraRow> for Camera {
 pub struct CameraMapItem {
     camera_id: u32,
     title: String,
-    latitude: f32,
-    longitude: f32,
+    latitude: f64,
+    longitude: f64,
     partner_id: Option<u32>,
     is_active: bool,
 }
