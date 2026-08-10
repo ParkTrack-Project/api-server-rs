@@ -25,6 +25,9 @@ jobs:
       
       - name: Install seqwall
         run: go install github.com/realkarych/seqwall@latest
+
+      - name: Install golang-migrate
+        run: go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
       
       - name: Run tests
         env:
