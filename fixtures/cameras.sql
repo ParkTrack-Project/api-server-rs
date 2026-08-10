@@ -43,7 +43,7 @@ INSERT INTO cameras (
     -- Тест на отсутствие снапшота
     ('Улица амеба', 'rtsp://cam6.example.com/stream', 1920, 1080,
      NULL, 40.7300, -73.9950, NULL, NULL,
-     TRUE, NULL);
+     TRUE, NULL),
 
      -- Тест на партнерский скоуп
      ('Улица злоба', 'rtsp://cam7.example.com/stream', 1920, 1080,
