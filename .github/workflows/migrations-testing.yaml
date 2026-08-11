@@ -22,6 +22,7 @@ jobs:
         uses: actions/setup-go@v7
         with:
           go-version: 'stable'
+          cache: false
       
       - name: Install seqwall
         run: go install github.com/realkarych/seqwall@latest
