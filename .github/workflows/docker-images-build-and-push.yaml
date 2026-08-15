@@ -8,7 +8,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  IMAGE_NAME: parktrack-project/api-server-rs
   IS_DEFAULT: ${{ github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
 
 jobs:
