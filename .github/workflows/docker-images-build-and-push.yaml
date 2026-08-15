@@ -68,7 +68,6 @@ jobs:
         with:
           context: .
           file: ${{ matrix.image.dockerfile }}
-          tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=${{ matrix.image.name }}-${{ matrix.platform.name }}
           cache-to: type=gha,scope=${{ matrix.image.name }}-${{ matrix.platform.name }},mode=max
