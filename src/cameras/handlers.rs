@@ -27,7 +27,7 @@ pub async fn list_cameras(
     State(state): State<ApiState>,
     Valid(Query(query)): Valid<Query<requests::ListCamerasQuery>>,
 ) -> ApiResult<responses::ListCameras> {
-    current_user.require(&[Permission::CamerasView])?;
+    current_user.require(Permission::CamerasView)?;
 
     service::list_public_cameras(&state, &current_user, query).await
 }
@@ -48,7 +48,7 @@ pub async fn create_camera(
     State(state): State<ApiState>,
     Valid(Json(payload)): Valid<Json<requests::CreateCamera>>,
 ) -> ApiResult<responses::CreateCamera> {
-    current_user.require(&[Permission::CamerasWrite])?;
+    current_user.require(Permission::CamerasWrite)?;
 
     service::create_camera(&state, &current_user, payload).await
 }
@@ -60,7 +60,7 @@ pub async fn get_camera(
     State(state): State<ApiState>,
     Valid(Path(camera_id)): Valid<Path<requests::CameraId>>,
 ) -> ApiResult<responses::Camera> {
-    current_user.require(&[Permission::CamerasView])?;
+    current_user.require(Permission::CamerasView)?;
 
     service::get_camera(&state, &current_user, camera_id).await
 }
@@ -73,7 +73,7 @@ pub async fn update_camera(
     Valid(Path(camera_id)): Valid<Path<requests::CameraId>>,
     Valid(Json(payload)): Valid<Json<requests::UpdateCamera>>,
 ) -> ApiResult<responses::Camera> {
-    current_user.require(&[Permission::CamerasWrite])?;
+    current_user.require(Permission::CamerasWrite)?;
 
     service::update_camera(&state, &current_user, camera_id, payload).await
 }
@@ -85,7 +85,7 @@ pub async fn delete_camera(
     State(state): State<ApiState>,
     Valid(Path(camera_id)): Valid<Path<requests::CameraId>>,
 ) -> ApiResult<impl IntoResponse> {
-    current_user.require(&[Permission::CamerasDelete])?;
+    current_user.require(Permission::CamerasDelete)?;
 
     service::delete_camera(&state, &current_user, camera_id)
         .await

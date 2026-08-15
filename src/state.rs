@@ -61,7 +61,7 @@ pub struct ApiConfig {
     pub database_url: String,
 
     pub jwt_secret: String,
-    pub jwt_expire_seconds: u32,
+    pub jwt_expire_seconds: u64,
 
     pub smtp_host: String,
     pub smtp_port: u32,
@@ -90,7 +90,7 @@ impl ApiConfig {
 
         let jwt_secret = env::var("JWT_SECRET").expect("JWT_SECRET must be set");
 
-        let jwt_expire_seconds: u32 = env::var("JWT_EXPIRE_SECONDS")
+        let jwt_expire_seconds: u64 = env::var("JWT_EXPIRE_SECONDS")
             .expect("JWT_EXPIRE_SECONDS must be set")
             .parse()
             .expect("JWT_EXPIRE_SECONDS must be positive integer");

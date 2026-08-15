@@ -1,5 +1,7 @@
 mod repository {
-    use api_server_rust::{cameras::{repository::CameraAccess, *}, error::{ApiError, ApiResult}, types::Bbox};
+    use std::assert_matches;
+
+use api_server_rust::{cameras::{repository::CameraAccess, *}, error::{ApiError, ApiResult}, types::Bbox};
     use sqlx::PgPool;
 
     const FIXTURE_CAMERAS_COUNT: u32 = 7;
@@ -148,10 +150,11 @@ mod repository {
         let scope = CameraAccess::Public;
 
         // Act
-        let res = repository::get_camera(&pool, 7, scope).await?;
+        let res = repository::find_by_id(&pool, 7, scope).await?;
         
         // Assert
         assert!(if let None = res {true} else {false});
+        assert_matches!(res, None);
         Ok(())
     }
 }

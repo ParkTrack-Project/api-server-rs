@@ -20,6 +20,9 @@ pub enum ApiError {
     #[error("missing or invalid authorization header")]
     Unauthenticated,
 
+    #[error("Account is disabled")]
+    AccountDisabled,
+
     #[error("invalid login or password")]
     InvalidCredentials,
 
@@ -29,8 +32,8 @@ pub enum ApiError {
     #[error("invalid token")]
     InvalidToken,
 
-    #[error("missing permissions: {0:?}")]
-    Forbidden(Vec<Permission>),
+    #[error("missing permission: {0}")]
+    Forbidden(Permission),
 
     #[error(transparent)]
     ValidationError(#[from] ValidationErrors),
@@ -48,6 +51,7 @@ impl IntoResponse for ApiError {
             ApiError::BadRequest(_) => StatusCode::BAD_REQUEST,
             ApiError::NotFound(_) => StatusCode::NOT_FOUND,
             ApiError::Unauthenticated
+            | ApiError::AccountDisabled
             | ApiError::InvalidCredentials
             | ApiError::TokenExpired
             | ApiError::InvalidToken => StatusCode::UNAUTHORIZED,

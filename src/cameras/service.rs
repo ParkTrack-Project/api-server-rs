@@ -72,7 +72,7 @@ pub async fn get_camera(
     current_user: &PublicAuthenticated,
     query: requests::CameraId,
 ) -> ApiResult<responses::Camera> {
-    let result = repository::get_camera(
+    let result = repository::find_by_id(
         &state.pool,
         query.camera_id,
         public_scope(current_user, ScopeType::View),

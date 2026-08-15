@@ -1,9 +1,7 @@
 use anyhow::Context;
-use phonenumber::format;
-use sea_query::{Alias, Cond, Expr, ExprTrait, Func, Iden, OnConflict, PostgresQueryBuilder};
+use sea_query::{Alias, Cond, Expr, ExprTrait, Func, PostgresQueryBuilder};
 use sea_query_sqlx::SqlxBinder;
-use sqlx::{PgPool, prelude::FromRow};
-use time::OffsetDateTime;
+use sqlx::PgExecutor;
 
 use crate::{
     cameras::{
@@ -11,10 +9,11 @@ use crate::{
             CAMERA_COLUMNS, CAMERA_MAP_ITEM_COLUMNS, CAMERA_NEXT_COLUMNS, Cameras,
             CameraMapItemRow, CameraNextRow, CameraRow, CreateCameraRow,
         },
-        requests, responses,
     },
     error::{ApiError, ApiResult},
 };
+
+use super::requests;
 
 #[derive(Debug, Clone, Copy)]
 pub enum CameraAccess {
@@ -26,7 +25,7 @@ pub enum CameraAccess {
 }
 
 pub async fn list_cameras(
-    pool: &PgPool,
+    pool: impl PgExecutor<'_>,
     query: requests::ListCamerasQuery,
     scope: CameraAccess,
 ) -> ApiResult<Vec<CameraRow>> {
@@ -43,7 +42,7 @@ pub async fn list_cameras(
 }
 
 pub async fn list_camera_map_items(
-    pool: &PgPool,
+    pool: impl PgExecutor<'_>,
     query: requests::ListCamerasQuery,
     scope: CameraAccess,
 ) -> ApiResult<Vec<CameraMapItemRow>> {
@@ -59,8 +58,12 @@ pub async fn list_camera_map_items(
         .map_err(ApiError::from)
 }
 
-pub async fn get_next_camera(pool: &PgPool, idx: i32) -> ApiResult<CameraNextRow> {
+pub async fn get_next_camera(
+    pool: impl PgExecutor<'_>,
+    idx: i32
+) -> ApiResult<CameraNextRow> {
     let (sql, values) = sea_query::Query::select()
+        .from(Cameras::Table)
         .columns(CAMERA_NEXT_COLUMNS)
         .column(Alias::new("next_id"))
         .offset((idx - 1).try_into().unwrap_or(0))
@@ -74,7 +77,7 @@ pub async fn get_next_camera(pool: &PgPool, idx: i32) -> ApiResult<CameraNextRow
         .map_err(ApiError::from)
 }
 
-pub async fn count_cameras(pool: &PgPool) -> ApiResult<i32> {
+pub async fn count_cameras(pool: impl PgExecutor<'_>) -> ApiResult<i32> {
     let (sql, values) = sea_query::Query::select()
         .from(Cameras::Table)
         .expr(Func::count(Expr::col(Cameras::CameraId)))
@@ -88,7 +91,7 @@ pub async fn count_cameras(pool: &PgPool) -> ApiResult<i32> {
 }
 
 pub async fn create_camera(
-    pool: &PgPool,
+    pool: impl PgExecutor<'_>,
     query: requests::CreateCamera,
     user_id: Option<i32>,
 ) -> ApiResult<CreateCameraRow> {
@@ -134,8 +137,8 @@ pub async fn create_camera(
         })
 }
 
-pub async fn get_camera(
-    pool: &PgPool,
+pub async fn find_by_id(
+    pool: impl PgExecutor<'_>,
     camera_id: i32,
     scope: CameraAccess,
 ) -> ApiResult<Option<CameraRow>> {
@@ -153,7 +156,7 @@ pub async fn get_camera(
 }
 
 pub async fn update_camera(
-    pool: &PgPool,
+    pool: impl PgExecutor<'_>,
     camera_id: i32,
     query: requests::UpdateCamera,
     scope: CameraAccess,
@@ -190,7 +193,11 @@ pub async fn update_camera(
         .map_err(ApiError::from)
 }
 
-pub async fn delete_camera(pool: &PgPool, camera_id: i32, scope: CameraAccess) -> ApiResult<u64> {
+pub async fn delete_camera(
+    pool: impl PgExecutor<'_>, 
+    camera_id: i32, 
+    scope: CameraAccess
+) -> ApiResult<u64> {
     let (sql, values) = sea_query::Query::delete()
         .from_table(Cameras::Table)
         .cond_where(scope_condition(scope))

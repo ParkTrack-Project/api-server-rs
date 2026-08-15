@@ -16,7 +16,7 @@ use crate::{
 };
 
 pub trait Authenticated {
-    fn require(&self, permissions: &[Permission]) -> ApiResult<()>;
+    fn require(&self, permission: Permission) -> ApiResult<()>;
 }
 
 #[derive(Debug)]
@@ -29,21 +29,15 @@ pub enum PublicAuthenticated {
 }
 
 impl Authenticated for PublicAuthenticated {
-    fn require(&self, permissions: &[Permission]) -> ApiResult<()> {
+    fn require(&self, permission: Permission) -> ApiResult<()> {
         match &self {
             Self::User { global_role, .. } => {
                 let effective_permissions = global_role.get_permissions();
-                let permissions: Vec<Permission> = permissions
-                    .iter()
-                    .filter(|p| !effective_permissions.contains(p))
-                    .copied()
-                    .collect();
 
-                if permissions.is_empty() {
-                    return Ok(());
-                }
-
-                return Err(ApiError::Forbidden(permissions));
+                return match effective_permissions.contains(&permission) {
+                    true => Ok(()),
+                    false => Err(ApiError::Forbidden(permission))
+                };
             }
             Self::ApiToken => {
                 return Ok(());
@@ -67,40 +61,38 @@ pub enum PartnerAuthenticated {
 }
 
 impl Authenticated for PartnerAuthenticated {
-    fn require(&self, permissions: &[Permission]) -> ApiResult<()> {
+    fn require(&self, permission: Permission) -> ApiResult<()> {
         match &self {
             Self::Admin { .. } => {
                 let effective_permissions = GlobalRole::Admin.get_permissions();
-                let permissions: Vec<Permission> = permissions
-                    .iter()
-                    .filter(|p| !effective_permissions.contains(p))
-                    .copied()
-                    .collect();
 
-                if permissions.is_empty() {
-                    return Ok(());
-                }
-
-                return Err(ApiError::Forbidden(permissions));
+                return match effective_permissions.contains(&permission) {
+                    true => Ok(()),
+                    false => Err(ApiError::Forbidden(permission))
+                };
             }
             Self::Member {
                 permissions: effective_permissions,
                 ..
             } => {
-                let permissions: Vec<Permission> = permissions
-                    .iter()
-                    .filter(|p| !effective_permissions.contains(p))
-                    .copied()
-                    .collect();
-
-                if permissions.is_empty() {
-                    return Ok(());
-                }
-
-                return Err(ApiError::Forbidden(permissions));
+                return match effective_permissions.contains(&permission) {
+                    true => Ok(()),
+                    false => Err(ApiError::Forbidden(permission))
+                };
             }
         }
     }
+}
+
+fn get_token_string(parts: &mut Parts) -> ApiResult<String> {
+    let parts = parts
+        .headers
+        .typed_get::<Authorization<Bearer>>()
+        .ok_or(ApiError::Unauthenticated)?
+        .token()
+        .to_string();
+
+    Ok(parts)
 }
 
 pub struct AuthenticatedOrApiToken(pub PublicAuthenticated);
@@ -112,12 +104,7 @@ impl FromRequestParts<ApiState> for AuthenticatedOrApiToken {
         parts: &mut Parts,
         state: &ApiState,
     ) -> Result<Self, Self::Rejection> {
-        let token = parts
-            .headers
-            .typed_get::<Authorization<Bearer>>()
-            .ok_or(ApiError::Unauthenticated)?
-            .token()
-            .to_string();
+        let token = get_token_string(parts)?;
 
         if constant_time_eq(state.config.api_token.as_bytes(), token.as_bytes()) {
             return Ok(AuthenticatedOrApiToken(PublicAuthenticated::ApiToken));
@@ -141,12 +128,7 @@ impl FromRequestParts<ApiState> for AuthenticatedAdminOrPartner {
         parts: &mut Parts,
         state: &ApiState,
     ) -> Result<Self, Self::Rejection> {
-        let token = parts
-            .headers
-            .typed_get::<Authorization<Bearer>>()
-            .ok_or(ApiError::Unauthenticated)?
-            .token()
-            .to_string();
+        let token = get_token_string(parts)?;
 
         let token_data = decode_token(&token, &state.decoding_key)?;
 
@@ -169,17 +151,33 @@ impl FromRequestParts<ApiState> for ApiToken {
         parts: &mut Parts,
         state: &ApiState,
     ) -> Result<Self, Self::Rejection> {
-        let token = parts
-            .headers
-            .typed_get::<Authorization<Bearer>>()
-            .ok_or(ApiError::Unauthenticated)?
-            .token()
-            .to_string();
+        let token = get_token_string(parts)?;
 
         if constant_time_eq(state.config.api_token.as_bytes(), token.as_bytes()) {
             return Ok(ApiToken);
         }
 
         Err(Unauthenticated)
+    }
+}
+
+pub struct AuthenticatedUserOrAdmin(pub PublicAuthenticated);
+
+impl FromRequestParts<ApiState> for AuthenticatedUserOrAdmin {
+    type Rejection = ApiError;
+
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &ApiState,
+    ) -> Result<Self, Self::Rejection>
+    {
+        let token = get_token_string(parts)?;
+
+        let token_data = decode_token(&token, &state.decoding_key)?;
+
+        Ok(AuthenticatedUserOrAdmin(PublicAuthenticated::User { 
+            user_id: token_data.claims.sub as i32, 
+            global_role: token_data.claims.role 
+        }))
     }
 }

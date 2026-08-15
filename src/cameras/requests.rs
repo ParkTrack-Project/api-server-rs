@@ -2,6 +2,7 @@ use serde::Deserialize;
 use validator::Validate;
 
 use crate::types::{Bbox, CameraView};
+use crate::http::validation::validate_source;
 
 #[derive(Debug, Validate, Deserialize)]
 pub struct ListCamerasQuery {
@@ -27,6 +28,7 @@ pub struct GetCamerasSnapshotQuery {
 pub struct CreateCamera {
     #[validate(length(min = 1, max = 200))]
     pub title: String,
+    #[validate(custom(function = "validate_source"))]
     pub source: String,
     #[validate(range(exclusive_min = 0))]
     pub image_width: i32,
@@ -43,6 +45,7 @@ pub struct CreateCamera {
 pub struct UpdateCamera {
     #[validate(length(min = 1, max = 200))]
     pub title: Option<String>,
+    #[validate(custom(function = "validate_source"))]
     pub source: Option<String>,
     #[validate(range(exclusive_min = 0))]
     pub image_width: Option<i32>,

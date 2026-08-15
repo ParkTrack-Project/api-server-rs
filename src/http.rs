@@ -8,10 +8,11 @@ use crate::{
 };
 
 pub mod authorization;
+pub mod hasher;
 pub mod middleware;
 pub mod permissions;
-mod token;
-mod validation;
+pub mod token;
+pub mod validation;
 
 #[debug_handler]
 pub async fn health_check(State(state): State<ApiState>) -> ApiResult<()> {
