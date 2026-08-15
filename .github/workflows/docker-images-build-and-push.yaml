@@ -73,7 +73,7 @@ jobs:
           cache-from: type=gha,scope=${{ matrix.image.name }}-${{ matrix.platform.name }}
           cache-to: type=gha,scope=${{ matrix.image.name }}-${{ matrix.platform.name }},mode=max
           push: ${{ github.event_name == 'push' }}
-          outputs: push-by-digest=true,name-canonical=true
+          outputs: type=image,push-by-digest=true,name-canonical=true,push=${{ github.event_name == 'push' }}
           platform: ${{ matrix.platform.name }}
       
       - name: Export digest
