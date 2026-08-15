@@ -27,8 +27,10 @@ jobs:
         platform:
           - name: linux/amd64
             runner: ubuntu-24.04
+            digest_file_suffix: linux-amd64
           - name: linux/arm64
             runner: ubuntu-24.04-arm
+            digest_file_suffix: linux-arm64
 
     runs-on: ${{ matrix.platform.runner }}
 
@@ -84,7 +86,7 @@ jobs:
       - name: Upload digest artifact
         uses: actions/upload-artifact@v4
         with:
-          name: digests-${{ matrix.image.name }}-${{ matrix.platform.name }}
+          name: digests-${{ matrix.image.name }}-${{ matrix.platform.digest_file_suffix }}
           path: ${{ runner.temp }}/digests/*
           if-no-files-found: error
           retention-days: 1
