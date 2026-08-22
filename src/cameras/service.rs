@@ -77,10 +77,8 @@ pub async fn get_camera(
         query.camera_id,
         public_scope(current_user, ScopeType::View),
     )
-    .await
-    .and_then(|res| {
-        res.ok_or_else(|| ApiError::NotFound(format!("camera of id {} not found", query.camera_id)))
-    })
+    .await?
+    .ok_or_else(|| ApiError::NotFound(format!("camera of id {} not found", query.camera_id)))
     .map(responses::Camera::from)?;
 
     Ok(result)

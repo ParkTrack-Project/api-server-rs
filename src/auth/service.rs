@@ -2,8 +2,11 @@ use crate::auth::responses::Access;
 use crate::auth::responses::User;
 use crate::error::ApiError;
 use crate::error::ApiResult;
-use crate::http::hasher::hash_password;
+use crate::error::BEGIN_TRANSACTION_ERROR;
 use crate::http::hasher::verify_password;
+use crate::http::permissions::ADMIN_PERMISSIONS;
+use crate::http::permissions::GlobalRole;
+use crate::http::permissions::USER_PERMISSIONS;
 use crate::http::token::create_access_token;
 use crate::state::ApiState;
 
@@ -38,7 +41,7 @@ pub async fn login(
     state: &ApiState,
     payload: requests::Login
 ) -> ApiResult<responses::Access> {
-    let creds = repository::find_by_email(&state.pool, &payload.login).await?;
+    let creds = repository::find_creds_by_email(&state.pool, &payload.login).await?;
 
     let Some(creds) = creds else {
         return Err(ApiError::InvalidCredentials);
@@ -71,5 +74,48 @@ pub async fn login(
         token_type: "Bearer".into(),
         expires_in: state.config.jwt_expire_seconds,
         user
+    })
+}
+
+pub async fn me(
+    state: &ApiState,
+    user_id: i32
+) -> ApiResult<responses::Me> {
+    let user = repository::find_by_user_id(&state.pool, user_id)
+        .await?
+        .ok_or_else(|| ApiError::NotFound(format!("user of id {} not found", user_id)))
+        .map(responses::User::from)?;
+
+    let partner_memberships = repository::find_partner_memberships_by_user_id(&state.pool, user_id)
+        .await?;
+
+    let mut permissions = repository::find_permissions_by_user_id_group_by_partner(
+        &state.pool, 
+        user_id,
+        partner_memberships.iter().map(|pm| pm.partner_id)
+    ).await?;
+
+    let partner_memberships: Vec<responses::PartnerMembership> = partner_memberships
+        .into_iter()
+        .map(|pm| responses::PartnerMembership { 
+            partner_id: pm.partner_id as u32, 
+            role: pm.user_role, 
+            permissions: permissions.remove(&pm.partner_id).unwrap_or_default(), 
+            read_scope: pm.read_scope,
+            write_scope: pm.write_scope, 
+            delete_scope: pm.delete_scope
+        })
+        .collect();
+
+    let permissions = if user.global_role == GlobalRole::User {
+        USER_PERMISSIONS.iter().map(|p| p.to_string()).collect()
+    } else {
+        ADMIN_PERMISSIONS.iter().map(|p| p.to_string()).collect()
+    };
+
+    Ok(responses::Me {
+        user,
+        permissions,
+        partner_memberships
     })
 }

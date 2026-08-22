@@ -72,3 +72,6 @@ impl IntoResponse for ApiError {
 }
 
 pub type ApiResult<T> = Result<T, ApiError>;
+
+// Common case anyhow error aliases
+pub const BEGIN_TRANSACTION_ERROR: &str = "Unable to begin transaction";

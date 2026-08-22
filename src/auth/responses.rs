@@ -1,7 +1,7 @@
 use axum::{Json, response::IntoResponse};
 use serde::Serialize;
 
-use crate::{auth::models::{self, ShortUserRow}, http::permissions::GlobalRole};
+use crate::{auth::models::{self, PartnerMembershipRow, ShortUserRow}, http::permissions::GlobalRole};
 
 #[derive(Debug, Serialize)]
 pub struct PasswordResetRequest {
@@ -15,42 +15,13 @@ pub struct PasswordResetConfirm {
 }
 
 #[derive(Debug, Serialize)]
-pub struct PartnerMembershipInfo {
-    partner_id: u32,
-    role: String,
-    permissions: Vec<String>,
-    read_scope: String,
-    write_scope: String,
-    delete_scope: String,
-    is_active: bool,
-}
-
-#[derive(Debug, Serialize)]
-pub struct AuthUserInfo {
-    user_id: u32,
-    email: String,
-    full_name: Option<String>,
-    global_role: String,
-    permissions: Vec<String>,
-    partner_memberships: Vec<PartnerMembershipInfo>,
-}
-
-#[derive(Debug, Serialize)]
-pub struct Token {
-    access_token: String,
-    token_type: String,
-    expires_in: u32,
-    user: AuthUserInfo,
-}
-
-#[derive(Debug, Serialize)]
-pub struct Me {
-    user_id: u32,
-    email: String,
-    full_name: Option<String>,
-    global_role: String,
-    permissions: Vec<String>,
-    partner_memberships: Vec<PartnerMembershipInfo>,
+pub struct PartnerMembership {
+    pub partner_id: u32,
+    pub role: String,
+    pub permissions: Vec<String>,
+    pub read_scope: String,
+    pub write_scope: String,
+    pub delete_scope: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -72,6 +43,21 @@ impl From<ShortUserRow> for User {
     }
 }
 
+#[derive(Debug, Serialize)]
+pub struct Me {
+    #[serde(flatten)]
+    pub user: User,
+    pub permissions: Vec<String>,
+    pub partner_memberships: Vec<PartnerMembership>,
+}
+
+impl IntoResponse for Me {
+    fn into_response(self) -> axum::response::Response {
+        Json(self).into_response()
+    }
+}
+
+// register + login
 #[derive(Debug, Serialize)]
 pub struct Access {
     pub access_token: String,

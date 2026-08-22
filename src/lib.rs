@@ -10,6 +10,7 @@ pub mod types;
 pub mod cameras;
 pub mod auth;
 pub mod users;
+pub mod partners;
 
 pub fn create_routes() -> Router<ApiState> {
     Router::new().nest(

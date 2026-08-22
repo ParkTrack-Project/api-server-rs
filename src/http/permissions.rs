@@ -39,7 +39,7 @@ pub enum ScopeType {
     Delete,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Display, EnumString, AsRefStr)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Display, EnumString, AsRefStr, Serialize)]
 pub enum Permission {
     #[strum(serialize = "admin.analytics.view")]
     AdminAnalyticsView,
@@ -113,7 +113,7 @@ pub enum Permission {
     ZonesView,
 }
 
-static USER_PERMISSIONS: LazyLock<Vec<Permission>> = LazyLock::new(|| {
+pub static USER_PERMISSIONS: LazyLock<Vec<Permission>> = LazyLock::new(|| {
     vec![
         Permission::UsersMeManage,
         Permission::MapView,
@@ -128,7 +128,7 @@ static USER_PERMISSIONS: LazyLock<Vec<Permission>> = LazyLock::new(|| {
     ]
 });
 
-static ADMIN_PERMISSIONS: LazyLock<Vec<Permission>> = LazyLock::new(|| {
+pub static ADMIN_PERMISSIONS: LazyLock<Vec<Permission>> = LazyLock::new(|| {
     [
         USER_PERMISSIONS.clone(),
         vec![

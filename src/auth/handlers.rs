@@ -6,6 +6,7 @@ use axum_valid::Valid;
 use crate::auth::service;
 use crate::error::ApiResult;
 use crate::http::authorization::AuthenticatedUserOrAdmin;
+use crate::http::authorization::PublicAuthenticated;
 use crate::state::ApiState;
 
 use super::requests;
@@ -62,7 +63,11 @@ pub async fn logout(
 pub async fn get_me(
     AuthenticatedUserOrAdmin(current_user): AuthenticatedUserOrAdmin,
     State(state): State<ApiState>
-) {
-    
-    todo!()
+) -> ApiResult<responses::Me>
+{
+    let PublicAuthenticated::User { user_id, .. } = current_user else {
+        unreachable!();
+    };
+
+    service::me(&state, user_id).await
 }
