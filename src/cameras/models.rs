@@ -1,6 +1,6 @@
+use chrono::{DateTime, FixedOffset};
 use sea_query::Iden;
 use sqlx::prelude::FromRow;
-use time::OffsetDateTime;
 
 #[derive(Iden)]
 pub enum Cameras {
@@ -34,9 +34,9 @@ pub struct CameraRow {
     pub partner_id: Option<i32>,
     pub created_by_user_id: Option<i32>,
     pub is_active: bool,
-    pub last_snapshot_at: Option<OffsetDateTime>,
-    pub created_at: OffsetDateTime,
-    pub updated_at: OffsetDateTime,
+    pub last_snapshot_at: Option<DateTime<FixedOffset>>,
+    pub created_at: DateTime<FixedOffset>,
+    pub updated_at: DateTime<FixedOffset>,
 }
 
 pub const CAMERA_COLUMNS: [Cameras; 14] = [

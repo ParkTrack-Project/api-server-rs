@@ -10,19 +10,24 @@ axum = "0.8.9"
 axum-extra = { version = "0.12.6", features = ["typed-header"] }
 axum-macros = "0.5.1"
 axum-valid = "0.24.0"
+chrono = { version = "0.4.45", features = ["serde"] }
 constant_time_eq = "0.4.2"
 dotenvy = "0.15.7"
+lettre = { version = "0.11", default-features = false, features = ["builder", "smtp-transport", "tokio1-rustls-tls", "ring", "webpki-roots"] }
+hex = "0.4.3"
 jsonwebtoken = { version = "10.4.0", features = ["rust_crypto"] }
 phonenumber = "0.3.9"
+rand = "0.10.2"
 regex = "1.12.4"
-sea-query = { version = "1.0.1", features = ["with-json"] }
-sea-query-sqlx = { version = "0.9.1", features = ["sqlx-postgres", "with-json"] }
+sea-query = { version = "1.0.1", features = ["with-json", "with-chrono"] }
+sea-query-sqlx = { version = "0.9.1", features = ["sqlx-postgres", "with-json", "with-chrono"] }
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.150"
-sqlx = { version = "0.9.0", features = ["json", "migrate", "postgres", "runtime-tokio", "time"] }
+sha2 = "0.11.0"
+sqlx = { version = "0.9.0", features = ["json", "migrate", "postgres", "runtime-tokio"] }
 strum = { version = "0.28.0", features = ["derive"] }
 thiserror = "2.0.18"
-time = { version = "0.3.51", features = ["serde", "formatting", "parsing"] } 
+# time = { version = "0.3.51", features = ["serde", "formatting", "parsing"] }
 tokio = { version = "1.0", features = ["full"] }
 tower = { version = "0.5.3", features = ["util"] }
 tower-http = { version = "0.7.0", features = ["cors", "request-id", "trace"] }

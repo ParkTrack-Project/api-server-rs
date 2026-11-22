@@ -14,7 +14,7 @@ pub mod service;
 
 pub fn camera_routes() -> Router<ApiState> {
     Router::new()
-        .route("/", get(handlers::get_camera))
+        .route("/", get(handlers::list_cameras))
         .route("/next", get(handlers::next_camera))
         .route("/new", post(handlers::create_camera))
         .route(

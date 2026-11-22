@@ -9,9 +9,13 @@ pub fn validate_phone(phone: &str) -> Result<(), ValidationError> {
 }
 
 pub fn validate_source(source: &str) -> Result<(), ValidationError> {
-    if source.ends_with(".m3u8") { return Ok(()) }
+    if source.ends_with(".m3u8") {
+        return Ok(());
+    }
 
-    if source.starts_with("rtsp://") { return Ok(()) }
+    if source.starts_with("rtsp://") {
+        return Ok(());
+    }
 
     Err(ValidationError::new("unsupported_format"))
 }

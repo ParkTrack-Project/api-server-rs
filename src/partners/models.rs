@@ -10,7 +10,7 @@ pub enum Partners {
     ContactPhone,
     IsActive,
     CreatedAt,
-    UpdatedAt
+    UpdatedAt,
 }
 
 #[derive(Iden)]
@@ -23,7 +23,7 @@ pub enum PartnerMemberships {
     ReadScope,
     WriteScope,
     DeleteScope,
-    CreatedAt
+    CreatedAt,
 }
 
 #[derive(Iden)]
@@ -33,5 +33,5 @@ pub enum PartnerMemberPermissions {
     PartnerId,
     Permission,
     GrantedAt,
-    GrantedBy
+    GrantedBy,
 }

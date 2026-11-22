@@ -20,8 +20,8 @@ pub async fn list_public_cameras(
     current_user: &PublicAuthenticated,
     query: requests::ListCamerasQuery,
 ) -> ApiResult<responses::ListCameras> {
-    let result = list_cameras_with_scope(state, query, public_scope(current_user, ScopeType::View))
-        .await?;
+    let result =
+        list_cameras_with_scope(state, query, public_scope(current_user, ScopeType::View)).await?;
 
     Ok(result)
 }
@@ -126,7 +126,10 @@ pub async fn delete_camera(
     .await?;
 
     if rows_affected == 0 {
-        return Err(ApiError::NotFound(format!("camera with id {}", query.camera_id)));
+        return Err(ApiError::NotFound(format!(
+            "camera with id {}",
+            query.camera_id
+        )));
     }
 
     tracing::info!(camera_id = query.camera_id, "camera deleted");

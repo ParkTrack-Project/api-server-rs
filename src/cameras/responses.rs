@@ -1,6 +1,6 @@
 use axum::{Json, response::IntoResponse};
+use chrono::{DateTime, FixedOffset};
 use serde::Serialize;
-use time::OffsetDateTime;
 
 use crate::cameras::models::{CameraMapItemRow, CameraNextRow, CameraRow, CreateCameraRow};
 
@@ -17,9 +17,9 @@ pub struct Camera {
     partner_id: Option<u32>,
     created_by_user_id: Option<u32>,
     is_active: bool,
-    last_snapshot_at: Option<OffsetDateTime>,
-    created_at: OffsetDateTime,
-    updated_at: OffsetDateTime,
+    last_snapshot_at: Option<DateTime<FixedOffset>>,
+    created_at: DateTime<FixedOffset>,
+    updated_at: DateTime<FixedOffset>,
 }
 
 impl IntoResponse for Camera {

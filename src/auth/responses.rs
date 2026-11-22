@@ -1,17 +1,28 @@
 use axum::{Json, response::IntoResponse};
 use serde::Serialize;
 
-use crate::{auth::models::{self, PartnerMembershipRow, ShortUserRow}, http::permissions::GlobalRole};
+use crate::{auth::models::ShortUserRow, http::permissions::GlobalRole};
 
 #[derive(Debug, Serialize)]
 pub struct PasswordResetRequest {
-    ok: bool,
     reset_token: Option<String>,
+}
+
+impl IntoResponse for PasswordResetRequest {
+    fn into_response(self) -> axum::response::Response {
+        Json(self).into_response()
+    }
 }
 
 #[derive(Debug, Serialize)]
 pub struct PasswordResetConfirm {
     ok: bool,
+}
+
+impl IntoResponse for PasswordResetConfirm {
+    fn into_response(self) -> axum::response::Response {
+        Json(self).into_response()
+    }
 }
 
 #[derive(Debug, Serialize)]
@@ -29,7 +40,7 @@ pub struct User {
     pub user_id: u32,
     pub email: String,
     pub full_name: Option<String>,
-    pub global_role: GlobalRole
+    pub global_role: GlobalRole,
 }
 
 impl From<ShortUserRow> for User {
@@ -38,7 +49,10 @@ impl From<ShortUserRow> for User {
             user_id: row.user_id as u32,
             email: row.email,
             full_name: row.full_name,
-            global_role: row.global_role.parse().expect("global_role should be valid")
+            global_role: row
+                .global_role
+                .parse()
+                .expect("global_role should be valid"),
         }
     }
 }
@@ -63,7 +77,7 @@ pub struct Access {
     pub access_token: String,
     pub token_type: String,
     pub expires_in: u64,
-    pub user: User
+    pub user: User,
 }
 
 impl IntoResponse for Access {

@@ -1,14 +1,18 @@
 use std::sync::LazyLock;
 
 use axum::{
-    Router, extract::{MatchedPath, Request}, http::HeaderName,
+    Router,
+    extract::{MatchedPath, Request},
+    http::HeaderName,
 };
 use regex::{Regex, RegexBuilder};
-use tower::{ServiceBuilder};
+use tower::ServiceBuilder;
 use tower_http::{
-    cors::{AllowOrigin, Any, CorsLayer}, request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer}, trace::{DefaultOnRequest, DefaultOnResponse, TraceLayer},
+    cors::{AllowOrigin, Any, CorsLayer},
+    request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer},
+    trace::{DefaultOnRequest, DefaultOnResponse, TraceLayer},
 };
-use tracing::{info_span, Level};
+use tracing::{Level, info_span};
 
 static CORS_ORIGINS: [&str; 7] = [
     "https://swagger.parktrack.live",
@@ -31,9 +35,12 @@ static REQUEST_ID_HEADER: HeaderName = HeaderName::from_static("x-request-id");
 pub fn apply_middleware(router: Router) -> Router {
     router.layer(
         ServiceBuilder::new()
-        // ID SETTER
-            .layer(SetRequestIdLayer::new(REQUEST_ID_HEADER.clone(), MakeRequestUuid))
-        // TRACING
+            // ID SETTER
+            .layer(SetRequestIdLayer::new(
+                REQUEST_ID_HEADER.clone(),
+                MakeRequestUuid,
+            ))
+            // TRACING
             .layer(
                 TraceLayer::new_for_http()
                     .make_span_with(|request: &Request| {
@@ -58,9 +65,9 @@ pub fn apply_middleware(router: Router) -> Router {
                     .on_request(DefaultOnRequest::new().level(Level::INFO))
                     .on_response(DefaultOnResponse::new().level(Level::INFO)),
             )
-        // ID PROPAGATOR
-        .layer(PropagateRequestIdLayer::new(REQUEST_ID_HEADER.clone()))
-        // CORS
+            // ID PROPAGATOR
+            .layer(PropagateRequestIdLayer::new(REQUEST_ID_HEADER.clone()))
+            // CORS
             .layer(
                 CorsLayer::new()
                     .allow_origin(

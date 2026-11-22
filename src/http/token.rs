@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use jsonwebtoken::{DecodingKey, EncodingKey, Header, TokenData, Validation, decode, encode};
 use serde::{Deserialize, Serialize};
-use time::OffsetDateTime;
+// use time::OffsetDateTime;
 use validator::Validate;
 
 use crate::{
@@ -13,7 +13,9 @@ use crate::{
 #[derive(Debug, Serialize, Deserialize, Validate)]
 pub struct Claims {
     pub(crate) sub: u32,
-    exp: usize,
+    pub(crate) exp: usize,
+    #[serde(default)]
+    jti: String,
     pub(crate) role: GlobalRole,
 }
 
@@ -24,16 +26,19 @@ pub fn create_access_token(
     user_id: u32,
     expire_seconds: u64,
     role: GlobalRole,
-    secret: &str
+    secret: &str,
 ) -> String {
-    let now = OffsetDateTime::now_utc();
+    // let now = OffsetDateTime::now_utc();
+    let now = chrono::Utc::now();
 
     let expire = now + Duration::from_secs(expire_seconds);
 
     let claims = Claims {
         sub: user_id,
-        exp: expire.unix_timestamp() as usize,
-        role
+        jti: crate::utils::hasher::generate_password_reset_token(),
+        // exp: expire.unix_timestamp() as usize,
+        exp: expire.timestamp() as usize,
+        role,
     };
 
     let header = Header::new(JWT_ALGORITHM);
@@ -47,9 +52,7 @@ pub fn decode_token(token: &str, decoding_key: &DecodingKey) -> ApiResult<TokenD
     validation.leeway = JWT_LEEWAY_SECONDS;
 
     let decoded =
-        decode::<Claims>(&token, &decoding_key, &validation).map_err(|err| match err
-            .kind()
-        {
+        decode::<Claims>(token, decoding_key, &validation).map_err(|err| match err.kind() {
             jsonwebtoken::errors::ErrorKind::ExpiredSignature => ApiError::TokenExpired,
             _ => ApiError::InvalidToken,
         })?;
@@ -68,9 +71,12 @@ mod tests {
 
     use jsonwebtoken::DecodingKey;
 
-    use crate::{error::ApiError, http::{permissions::GlobalRole, token::JWT_LEEWAY_SECONDS}};
+    use crate::{
+        error::ApiError,
+        http::{permissions::GlobalRole, token::JWT_LEEWAY_SECONDS},
+    };
 
-    use super::{decode_token, create_access_token};
+    use super::{create_access_token, decode_token};
 
     #[test]
     fn encode_token_successfully() {
@@ -87,7 +93,7 @@ mod tests {
     fn decode_token_malformed_returns_api_error() {
         // Arrange
         let token = "shit";
-        let decoding_key = DecodingKey::from_secret(&[1,2,3,4]);
+        let decoding_key = DecodingKey::from_secret(&[1, 2, 3, 4]);
 
         // Act
         let res = decode_token(token, &decoding_key);
@@ -102,7 +108,7 @@ mod tests {
         // Arrange
         let secret = "he was boiling shit in a kettle";
         let exp = 3;
-        let token = create_access_token(1, exp, GlobalRole::User, &secret);
+        let token = create_access_token(1, exp, GlobalRole::User, secret);
         let decoding_key = DecodingKey::from_secret(secret.as_bytes());
 
         // Act

@@ -58,7 +58,6 @@ impl<'de> Deserialize<'de> for Bbox {
     }
 }
 
-
 #[derive(Debug, Clone, Copy, Deserialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum CameraView {
@@ -71,4 +70,3 @@ impl Default for CameraView {
         CameraView::Full
     }
 }
-

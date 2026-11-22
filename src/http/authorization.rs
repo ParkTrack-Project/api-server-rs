@@ -1,7 +1,6 @@
 use axum::{extract::FromRequestParts, http::request::Parts};
 use axum_extra::headers::{Authorization, HeaderMapExt, authorization::Bearer};
 use constant_time_eq::constant_time_eq;
-use serde::{Deserialize, Serialize};
 
 use crate::{
     error::{
@@ -36,7 +35,7 @@ impl Authenticated for PublicAuthenticated {
 
                 return match effective_permissions.contains(&permission) {
                     true => Ok(()),
-                    false => Err(ApiError::Forbidden(permission))
+                    false => Err(ApiError::Forbidden(permission)),
                 };
             }
             Self::ApiToken => {
@@ -68,7 +67,7 @@ impl Authenticated for PartnerAuthenticated {
 
                 return match effective_permissions.contains(&permission) {
                     true => Ok(()),
-                    false => Err(ApiError::Forbidden(permission))
+                    false => Err(ApiError::Forbidden(permission)),
                 };
             }
             Self::Member {
@@ -77,7 +76,7 @@ impl Authenticated for PartnerAuthenticated {
             } => {
                 return match effective_permissions.contains(&permission) {
                     true => Ok(()),
-                    false => Err(ApiError::Forbidden(permission))
+                    false => Err(ApiError::Forbidden(permission)),
                 };
             }
         }
@@ -111,6 +110,9 @@ impl FromRequestParts<ApiState> for AuthenticatedOrApiToken {
         }
 
         let token_data = decode_token(&token, &state.decoding_key)?;
+        if crate::auth::repository::is_token_revoked(&state.pool, &token).await? {
+            return Err(ApiError::InvalidToken);
+        }
 
         Ok(AuthenticatedOrApiToken(PublicAuthenticated::User {
             user_id: token_data.claims.sub as i32,
@@ -131,6 +133,9 @@ impl FromRequestParts<ApiState> for AuthenticatedAdminOrPartner {
         let token = get_token_string(parts)?;
 
         let token_data = decode_token(&token, &state.decoding_key)?;
+        if crate::auth::repository::is_token_revoked(&state.pool, &token).await? {
+            return Err(ApiError::InvalidToken);
+        }
 
         if token_data.claims.role == GlobalRole::Admin {
             return Ok(AuthenticatedAdminOrPartner(PartnerAuthenticated::Admin {
@@ -169,15 +174,17 @@ impl FromRequestParts<ApiState> for AuthenticatedUserOrAdmin {
     async fn from_request_parts(
         parts: &mut Parts,
         state: &ApiState,
-    ) -> Result<Self, Self::Rejection>
-    {
+    ) -> Result<Self, Self::Rejection> {
         let token = get_token_string(parts)?;
 
         let token_data = decode_token(&token, &state.decoding_key)?;
+        if crate::auth::repository::is_token_revoked(&state.pool, &token).await? {
+            return Err(ApiError::InvalidToken);
+        }
 
-        Ok(AuthenticatedUserOrAdmin(PublicAuthenticated::User { 
-            user_id: token_data.claims.sub as i32, 
-            global_role: token_data.claims.role 
+        Ok(AuthenticatedUserOrAdmin(PublicAuthenticated::User {
+            user_id: token_data.claims.sub as i32,
+            global_role: token_data.claims.role,
         }))
     }
 }

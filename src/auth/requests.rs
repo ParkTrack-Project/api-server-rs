@@ -24,12 +24,14 @@ pub struct Login {
 #[derive(Debug, Validate, Deserialize)]
 pub struct PasswordReset {
     #[validate(email)]
-    email: String,
+    pub email: String,
 }
 
 #[derive(Debug, Validate, Deserialize)]
 pub struct PasswordResetConfirm {
-    token: String,
+    #[validate(email)]
+    pub email: String,
+    pub token: String,
     #[validate(length(min = 6, message = "Password should be at least 6 characters long"))]
-    new_password: String,
+    pub new_password: String,
 }

@@ -4,11 +4,9 @@ use sea_query_sqlx::SqlxBinder;
 use sqlx::PgExecutor;
 
 use crate::{
-    cameras::{
-        models::{
-            CAMERA_COLUMNS, CAMERA_MAP_ITEM_COLUMNS, CAMERA_NEXT_COLUMNS, Cameras,
-            CameraMapItemRow, CameraNextRow, CameraRow, CreateCameraRow,
-        },
+    cameras::models::{
+        CAMERA_COLUMNS, CAMERA_MAP_ITEM_COLUMNS, CAMERA_NEXT_COLUMNS, CameraMapItemRow,
+        CameraNextRow, CameraRow, Cameras, CreateCameraRow,
     },
     error::{ApiError, ApiResult},
 };
@@ -58,10 +56,7 @@ pub async fn list_camera_map_items(
         .map_err(ApiError::from)
 }
 
-pub async fn get_next_camera(
-    pool: impl PgExecutor<'_>,
-    idx: i32
-) -> ApiResult<CameraNextRow> {
+pub async fn get_next_camera(pool: impl PgExecutor<'_>, idx: i32) -> ApiResult<CameraNextRow> {
     let (sql, values) = sea_query::Query::select()
         .from(Cameras::Table)
         .columns(CAMERA_NEXT_COLUMNS)
@@ -125,7 +120,7 @@ pub async fn create_camera(
         .await
         .map_err(|e| {
             if let sqlx::Error::Database(db_err) = &e {
-                if db_err.code().as_deref() == Some("23505") {
+                if db_err.is_unique_violation() {
                     return ApiError::Conflict("camera already exists".to_string());
                 }
             }
@@ -169,12 +164,8 @@ pub async fn update_camera(
             [
                 query.title.map(|v| (Cameras::Title, v.into())),
                 query.source.map(|v| (Cameras::Source, v.into())),
-                query
-                    .image_width
-                    .map(|v| (Cameras::ImageWidth, v.into())),
-                query
-                    .image_height
-                    .map(|v| (Cameras::ImageHeight, v.into())),
+                query.image_width.map(|v| (Cameras::ImageWidth, v.into())),
+                query.image_height.map(|v| (Cameras::ImageHeight, v.into())),
                 query.calib.map(|v| (Cameras::Calib, v.into())),
                 query.latitude.map(|v| (Cameras::Latitude, v.into())),
                 query.longitude.map(|v| (Cameras::Longitude, v.into())),
@@ -194,9 +185,9 @@ pub async fn update_camera(
 }
 
 pub async fn delete_camera(
-    pool: impl PgExecutor<'_>, 
-    camera_id: i32, 
-    scope: CameraAccess
+    pool: impl PgExecutor<'_>,
+    camera_id: i32,
+    scope: CameraAccess,
 ) -> ApiResult<u64> {
     let (sql, values) = sea_query::Query::delete()
         .from_table(Cameras::Table)
@@ -231,9 +222,7 @@ fn base_list_query(
             query.cond_where(
                 Cond::all()
                     .add(Expr::col(Cameras::Latitude).between(v.min_latitude, v.max_latitude))
-                    .add(
-                        Expr::col(Cameras::Longitude).between(v.min_longitude, v.max_longitude),
-                    ),
+                    .add(Expr::col(Cameras::Longitude).between(v.min_longitude, v.max_longitude)),
             );
         })
         .to_owned()

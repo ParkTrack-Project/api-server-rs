@@ -87,9 +87,7 @@ pub async fn delete_camera(
 ) -> ApiResult<impl IntoResponse> {
     current_user.require(Permission::CamerasDelete)?;
 
-    service::delete_camera(&state, &current_user, camera_id)
-        .await
-        .map(|_| StatusCode::NO_CONTENT)
+    service::delete_camera(&state, &current_user, camera_id).await
 }
 
 // GET /cameras/{camera_id}/snapshot

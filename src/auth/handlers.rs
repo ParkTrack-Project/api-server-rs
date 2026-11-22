@@ -1,5 +1,7 @@
 use axum::Json;
 use axum::extract::State;
+use axum::http::StatusCode;
+use axum::response::IntoResponse;
 use axum_macros::debug_handler;
 use axum_valid::Valid;
 
@@ -16,7 +18,7 @@ use super::responses;
 #[debug_handler]
 pub async fn register(
     State(state): State<ApiState>,
-    Valid(Json(payload)): Valid<Json<requests::Register>>
+    Valid(Json(payload)): Valid<Json<requests::Register>>,
 ) -> ApiResult<responses::Access> {
     service::register(&state, payload).await
 }
@@ -25,7 +27,7 @@ pub async fn register(
 #[debug_handler]
 pub async fn login(
     State(state): State<ApiState>,
-    Valid(Json(payload)): Valid<Json<requests::Login>>
+    Valid(Json(payload)): Valid<Json<requests::Login>>,
 ) -> ApiResult<responses::Access> {
     service::login(&state, payload).await
 }
@@ -34,37 +36,43 @@ pub async fn login(
 #[debug_handler]
 pub async fn reset_password_request(
     State(state): State<ApiState>,
-    Valid(Json(body)): Valid<Json<requests::PasswordReset>>
-) {
-    todo!()
+    Valid(Json(payload)): Valid<Json<requests::PasswordReset>>,
+) -> ApiResult<impl IntoResponse> {
+    service::request_password_reset(&state, payload)
+        .await
+        .map(|_| StatusCode::NO_CONTENT)
 }
 
 // POST /auth/password-reset/confirm
 #[debug_handler]
 pub async fn reset_password_confirm(
     State(state): State<ApiState>,
-    Valid(Json(body)): Valid<Json<requests::PasswordResetConfirm>>,
-) {
-    todo!()
+    Valid(Json(payload)): Valid<Json<requests::PasswordResetConfirm>>,
+) -> ApiResult<StatusCode> {
+    service::confirm_password_reset(&state, payload).await?;
+    Ok(StatusCode::NO_CONTENT)
 }
 
 // POST /auth/logout
 #[debug_handler]
 pub async fn logout(
-    AuthenticatedUserOrAdmin(current_user): AuthenticatedUserOrAdmin,
-    State(state): State<ApiState>
-) {
-    // хз надо чето делать
-    todo!()
+    AuthenticatedUserOrAdmin(_current_user): AuthenticatedUserOrAdmin,
+    State(state): State<ApiState>,
+    axum_extra::TypedHeader(authorization): axum_extra::TypedHeader<
+        axum_extra::headers::Authorization<axum_extra::headers::authorization::Bearer>,
+    >,
+) -> ApiResult<StatusCode> {
+    service::logout(&state, authorization.token()).await?;
+    Ok(StatusCode::NO_CONTENT)
 }
 
 // GET /auth/me
 #[debug_handler]
 pub async fn get_me(
     AuthenticatedUserOrAdmin(current_user): AuthenticatedUserOrAdmin,
-    State(state): State<ApiState>
-) -> ApiResult<responses::Me>
-{
+    State(state): State<ApiState>,
+) -> ApiResult<responses::Me> {
+    // Возможно есть более правильный способ сделать это...
     let PublicAuthenticated::User { user_id, .. } = current_user else {
         unreachable!();
     };

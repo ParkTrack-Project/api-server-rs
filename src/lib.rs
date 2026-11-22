@@ -1,4 +1,4 @@
-use axum::{Router, routing::get};
+use axum::Router;
 
 use crate::state::ApiState;
 
@@ -7,15 +7,17 @@ pub mod http;
 pub mod state;
 pub mod types;
 
-pub mod cameras;
 pub mod auth;
-pub mod users;
+pub mod cameras;
 pub mod partners;
+pub mod users;
+pub mod utils;
 
 pub fn create_routes() -> Router<ApiState> {
     Router::new().nest(
         "/api/v3",
         Router::new()
+            .nest("/auth", auth::auth_routes())
             .nest("/cameras", cameras::camera_routes())
             .merge(http::system_routes()),
     )

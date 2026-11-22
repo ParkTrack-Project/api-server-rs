@@ -20,7 +20,7 @@ pub enum ApiError {
     #[error("missing or invalid authorization header")]
     Unauthenticated,
 
-    #[error("Account is disabled")]
+    #[error("Account is disable()d")]
     AccountDisabled,
 
     #[error("invalid login or password")]

@@ -1,7 +1,11 @@
 mod repository {
     use std::assert_matches;
 
-use api_server_rust::{cameras::{repository::CameraAccess, *}, error::{ApiError, ApiResult}, types::Bbox};
+    use api_server_rust::{
+        cameras::{repository::CameraAccess, *},
+        error::{ApiError, ApiResult},
+        types::Bbox,
+    };
     use sqlx::PgPool;
 
     const FIXTURE_CAMERAS_COUNT: u32 = 7;
@@ -98,15 +102,15 @@ use api_server_rust::{cameras::{repository::CameraAccess, *}, error::{ApiError, 
     #[sqlx::test(fixtures(path = "../fixtures", scripts("cameras")))]
     fn create_camera_ok(pool: PgPool) -> ApiResult<()> {
         // Arrange
-            let q = requests::CreateCamera {
-                title: String::new(),
-                source: "popa".to_string(),
-                image_width: 1,
-                image_height: 1,
-                calib: None,
-                latitude: 0.,
-                longitude: 0.
-            };
+        let q = requests::CreateCamera {
+            title: String::new(),
+            source: "popa".to_string(),
+            image_width: 1,
+            image_height: 1,
+            calib: None,
+            latitude: 0.,
+            longitude: 0.,
+        };
         // Act
 
         let _ = repository::create_camera(&pool, q, None).await?;
@@ -137,7 +141,7 @@ use api_server_rust::{cameras::{repository::CameraAccess, *}, error::{ApiError, 
 
         // Act
         let res = repository::delete_camera(&pool, 7, scope).await?;
-        
+
         // Assert
         assert_eq!(res, 0);
         Ok(())
@@ -151,9 +155,9 @@ use api_server_rust::{cameras::{repository::CameraAccess, *}, error::{ApiError, 
 
         // Act
         let res = repository::find_by_id(&pool, 7, scope).await?;
-        
+
         // Assert
-        assert!(if let None = res {true} else {false});
+        assert!(if let None = res { true } else { false });
         assert_matches!(res, None);
         Ok(())
     }

@@ -1,8 +1,8 @@
 use serde::Deserialize;
 use validator::Validate;
 
-use crate::types::{Bbox, CameraView};
 use crate::http::validation::validate_source;
+use crate::types::{Bbox, CameraView};
 
 #[derive(Debug, Validate, Deserialize)]
 pub struct ListCamerasQuery {

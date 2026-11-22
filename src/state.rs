@@ -8,10 +8,12 @@ pub struct ApiState {
     pub inner: Arc<ApiStateInner>,
 }
 
+#[derive(Clone)]
 pub struct ApiStateInner {
     pub config: ApiConfig,
     pub decoding_key: DecodingKey,
     pub pool: PgPool,
+    pub email_service: Arc<dyn crate::utils::smtp_service::EmailService>,
 }
 
 impl std::ops::Deref for ApiState {
@@ -36,11 +38,20 @@ impl ApiState {
             config,
             decoding_key,
             pool,
+            email_service: Arc::new(crate::utils::smtp_service::SmtpEmailService),
         };
 
         Self {
             inner: Arc::new(inner),
         }
+    }
+
+    pub fn with_email_service(
+        mut self,
+        email_service: Arc<dyn crate::utils::smtp_service::EmailService>,
+    ) -> Self {
+        Arc::make_mut(&mut self.inner).email_service = email_service;
+        self
     }
 
     pub async fn new(config: ApiConfig, decoding_key: DecodingKey, pool: PgPool) -> Self {
@@ -49,6 +60,7 @@ impl ApiState {
                 config,
                 decoding_key,
                 pool,
+                email_service: Arc::new(crate::utils::smtp_service::SmtpEmailService),
             }),
         }
     }
