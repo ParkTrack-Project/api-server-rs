@@ -1,6 +1,6 @@
 use crate::{
-    cameras::repository::CameraAccess,
     error::{ApiError, ApiResult},
+    features::cameras::repository::CameraAccess,
     http::{
         authorization::PublicAuthenticated,
         permissions::{GlobalRole, ScopeType},

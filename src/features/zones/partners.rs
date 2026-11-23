@@ -67,7 +67,7 @@ pub async fn create(
                 &state,
                 input,
                 Some(current_user.user_id),
-                crate::cameras::repository::CameraAccess::Partner {
+                crate::features::cameras::repository::CameraAccess::Partner {
                     partner_id: current_user.partner_id,
                 },
             )
@@ -91,7 +91,7 @@ pub async fn update(
             id.zone_id,
             input,
             scope,
-            crate::cameras::repository::CameraAccess::Partner {
+            crate::features::cameras::repository::CameraAccess::Partner {
                 partner_id: current_user.partner_id,
             },
         )

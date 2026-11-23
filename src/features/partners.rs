@@ -1,4 +1,6 @@
-use crate::{cameras::partner_camera_routes, state::ApiState, zones::partner_zone_routes};
+use crate::{
+    features::cameras::partner_camera_routes, features::zones::partner_zone_routes, state::ApiState,
+};
 use axum::{Router, routing::get};
 
 pub mod handlers;
@@ -11,10 +13,7 @@ pub mod service;
 
 pub fn partner_routes() -> Router<ApiState> {
     Router::new()
-        .nest(
-            "/{partner_id}/cameras",
-            partner_camera_routes(),
-        )
+        .nest("/{partner_id}/cameras", partner_camera_routes())
         .nest("/{partner_id}/zones", partner_zone_routes())
         .route(
             "/{partner_id}/members",

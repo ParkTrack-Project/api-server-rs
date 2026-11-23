@@ -5,9 +5,9 @@ use axum::response::IntoResponse;
 use axum_macros::debug_handler;
 use axum_valid::Valid;
 
-use crate::auth::service;
 use crate::error::ApiError;
 use crate::error::ApiResult;
+use crate::features::auth::service;
 use crate::http::authorization::AuthenticatedUserOrAdmin;
 use crate::http::authorization::PublicAuthenticated;
 use crate::state::ApiState;

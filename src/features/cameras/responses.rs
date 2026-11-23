@@ -2,7 +2,9 @@ use axum::{Json, response::IntoResponse};
 use chrono::{DateTime, FixedOffset};
 use serde::Serialize;
 
-use crate::cameras::models::{CameraMapItemRow, CameraNextRow, CameraRow, CreateCameraRow};
+use crate::features::cameras::models::{
+    CameraMapItemRow, CameraNextRow, CameraRow, CreateCameraRow,
+};
 
 #[derive(Debug, Serialize)]
 pub struct Camera {

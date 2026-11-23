@@ -2,8 +2,8 @@ mod repository {
     use std::assert_matches;
 
     use api_server_rust::{
-        cameras::{repository::CameraAccess, *},
         error::{ApiError, ApiResult},
+        features::cameras::{repository::CameraAccess, *},
         types::Bbox,
     };
     use sqlx::PgPool;

@@ -1,18 +1,17 @@
 use axum::Router;
 
-use crate::state::ApiState;
+use crate::{
+    features::{auth, cameras, partners, zones},
+    state::ApiState,
+};
 
 pub mod error;
+pub mod features;
 pub mod http;
 pub mod state;
 pub mod types;
 
-pub mod auth;
-pub mod cameras;
-pub mod partners;
-pub mod users;
 pub mod utils;
-pub mod zones;
 
 pub fn create_routes() -> Router<ApiState> {
     Router::new().nest(

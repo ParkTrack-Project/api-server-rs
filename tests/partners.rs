@@ -682,7 +682,7 @@ async fn membership_scopes_accept_only_supported_values(pool: PgPool) {
 
 #[sqlx::test(fixtures(path = "../fixtures", scripts("partners")))]
 async fn scope_migration_normalizes_legacy_rows_and_enforces_constraints(pool: PgPool) {
-    use api_server_rust::partners::{
+    use api_server_rust::features::partners::{
         member_repository::{self, MemberAccess},
         models::PartnerMemberships as M,
     };

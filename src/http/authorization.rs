@@ -110,7 +110,7 @@ impl FromRequestParts<ApiState> for AuthenticatedOrApiToken {
         }
 
         let token_data = decode_token(&token, &state.decoding_key)?;
-        if crate::auth::repository::is_token_revoked(&state.pool, &token).await? {
+        if crate::features::auth::repository::is_token_revoked(&state.pool, &token).await? {
             return Err(ApiError::InvalidToken);
         }
 
@@ -133,7 +133,7 @@ impl FromRequestParts<ApiState> for AuthenticatedAdminOrPartner {
         let token = get_token_string(parts)?;
 
         let token_data = decode_token(&token, &state.decoding_key)?;
-        if crate::auth::repository::is_token_revoked(&state.pool, &token).await? {
+        if crate::features::auth::repository::is_token_revoked(&state.pool, &token).await? {
             return Err(ApiError::InvalidToken);
         }
 
@@ -178,7 +178,7 @@ impl FromRequestParts<ApiState> for AuthenticatedUserOrAdmin {
         let token = get_token_string(parts)?;
 
         let token_data = decode_token(&token, &state.decoding_key)?;
-        if crate::auth::repository::is_token_revoked(&state.pool, &token).await? {
+        if crate::features::auth::repository::is_token_revoked(&state.pool, &token).await? {
             return Err(ApiError::InvalidToken);
         }
 
@@ -194,7 +194,7 @@ impl FromRequestParts<ApiState> for AuthenticatedUserOrAdmin {
 pub struct PartnerContext {
     pub user_id: i32,
     pub partner_id: i32,
-    pub membership: Option<crate::partners::models::MemberRow>,
+    pub membership: Option<crate::features::partners::models::MemberRow>,
     permissions: Vec<Permission>,
     is_admin: bool,
 }
@@ -218,8 +218,8 @@ impl PartnerContext {
             _ => Err(ApiError::AccessDenied),
         }
     }
-    pub fn scope(&self) -> crate::partners::member_repository::MemberAccess {
-        crate::partners::member_repository::MemberAccess::Partner {
+    pub fn scope(&self) -> crate::features::partners::member_repository::MemberAccess {
+        crate::features::partners::member_repository::MemberAccess::Partner {
             partner_id: self.partner_id,
         }
     }
@@ -241,7 +241,7 @@ impl Authenticated for PartnerContext {
 impl FromRequestParts<ApiState> for PartnerContext {
     type Rejection = ApiError;
     async fn from_request_parts(parts: &mut Parts, state: &ApiState) -> ApiResult<Self> {
-        use crate::partners::{member_repository as repository, requests::PartnerId};
+        use crate::features::partners::{member_repository as repository, requests::PartnerId};
         let AuthenticatedUserOrAdmin(identity) =
             AuthenticatedUserOrAdmin::from_request_parts(parts, state).await?;
         let axum::extract::Path(path) =
@@ -262,10 +262,10 @@ impl FromRequestParts<ApiState> for PartnerContext {
         };
 
         if global_role == GlobalRole::Admin {
-            crate::partners::repository::find(
+            crate::features::partners::repository::find(
                 &state.pool,
                 path.partner_id,
-                crate::partners::repository::PartnerAccess::All,
+                crate::features::partners::repository::PartnerAccess::All,
             )
             .await?
             .ok_or_else(|| ApiError::NotFound("partner".into()))?;

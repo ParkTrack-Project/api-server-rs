@@ -3,8 +3,8 @@ use super::{
     requests,
 };
 use crate::{
-    cameras::models::Cameras,
     error::{ApiError, ApiResult},
+    features::cameras::models::Cameras,
 };
 use sea_query::{Alias, Cond, Expr, ExprTrait, PostgresQueryBuilder, Query};
 use sea_query_sqlx::SqlxBinder;
@@ -165,13 +165,13 @@ pub async fn find(
 pub async fn camera_partner(
     pool: impl PgExecutor<'_>,
     id: i32,
-    scope: crate::cameras::repository::CameraAccess,
+    scope: crate::features::cameras::repository::CameraAccess,
 ) -> ApiResult<Option<Option<i32>>> {
     let mut q = Query::select();
     q.column(Cameras::PartnerId)
         .from(Cameras::Table)
         .and_where(Expr::col(Cameras::CameraId).eq(id));
-    q.cond_where(crate::cameras::repository::scope_condition(scope));
+    q.cond_where(crate::features::cameras::repository::scope_condition(scope));
     let (sql, values) = q.build_sqlx(PostgresQueryBuilder);
     sqlx::query_scalar_with(sqlx::AssertSqlSafe(sql), values)
         .fetch_optional(pool)

@@ -1,7 +1,7 @@
 use axum::{Json, response::IntoResponse};
 use serde::Serialize;
 
-use crate::{auth::models::ShortUserRow, http::permissions::GlobalRole};
+use crate::{features::auth::models::ShortUserRow, http::permissions::GlobalRole};
 
 #[derive(Debug, Serialize)]
 pub struct PasswordResetRequest {

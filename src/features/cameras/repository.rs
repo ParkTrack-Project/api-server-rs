@@ -4,11 +4,11 @@ use sea_query_sqlx::SqlxBinder;
 use sqlx::PgExecutor;
 
 use crate::{
-    cameras::models::{
+    error::{ApiError, ApiResult},
+    features::cameras::models::{
         CAMERA_COLUMNS, CAMERA_MAP_ITEM_COLUMNS, CAMERA_NEXT_COLUMNS, CameraMapItemRow,
         CameraNextRow, CameraRow, Cameras, CreateCameraRow,
     },
-    error::{ApiError, ApiResult},
 };
 
 use super::requests;

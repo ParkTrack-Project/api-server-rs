@@ -1,7 +1,7 @@
-use crate::auth::responses::Access;
-use crate::auth::responses::User;
 use crate::error::ApiError;
 use crate::error::ApiResult;
+use crate::features::auth::responses::Access;
+use crate::features::auth::responses::User;
 use crate::http::permissions::ADMIN_PERMISSIONS;
 use crate::http::permissions::GlobalRole;
 use crate::http::permissions::USER_PERMISSIONS;

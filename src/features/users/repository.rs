@@ -3,7 +3,7 @@ use sqlx::PgExecutor;
 
 use crate::{
     error::ApiResult,
-    users::models::{UserRow, Users},
+    features::users::models::{UserRow, Users},
 };
 
 use super::requests;

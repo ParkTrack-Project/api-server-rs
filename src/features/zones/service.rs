@@ -2,7 +2,7 @@ use super::{
     repository::{self, ZoneAccess},
     requests, responses,
 };
-use crate::cameras::repository::CameraAccess;
+use crate::features::cameras::repository::CameraAccess;
 use crate::{
     error::{ApiError, ApiResult},
     http::{authorization::PublicAuthenticated, permissions::GlobalRole},

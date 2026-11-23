@@ -7,15 +7,15 @@ use sea_query_sqlx::SqlxBinder;
 use sqlx::PgExecutor;
 
 use crate::{
-    auth::models::{
+    error::{ApiError, ApiResult},
+    features::auth::models::{
         LOGIN_USER_COLUMNS, LoginUserRow, PARTNER_MEMBERSHIP_COLUMNS, PartnerMembershipRow,
         PartnerPermissionRow, PasswordResetTokens, SHORT_PASSWORD_RESET_TOKEN_COLUMNS,
         SHORT_USER_COLUMNS, ShortPasswordResetTokenRow, ShortUserRow,
     },
-    error::{ApiError, ApiResult},
+    features::partners::models::{PartnerMemberPermissions, PartnerMemberships},
+    features::users::models::Users,
     http::permissions::GlobalRole,
-    partners::models::{PartnerMemberPermissions, PartnerMemberships},
-    users::models::Users,
     utils::hasher::{hash_password, hash_password_reset_token},
 };
 

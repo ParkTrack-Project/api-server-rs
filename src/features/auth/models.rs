@@ -3,8 +3,8 @@ use sea_query::Iden;
 use sqlx::prelude::FromRow;
 
 use crate::{
-    partners::models::{PartnerMemberPermissions, PartnerMemberships},
-    users::models::Users::{self},
+    features::partners::models::{PartnerMemberPermissions, PartnerMemberships},
+    features::users::models::Users::{self},
 };
 
 #[derive(Debug, FromRow)]

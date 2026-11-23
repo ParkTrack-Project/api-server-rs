@@ -6,10 +6,10 @@
 Используй `cargo fmt --all`, в сочетании с `cargo clippy --all-targets --all-features -- -D warnings` для форматирования и соблюдения лучших практик
 
 ## Архитектура
-- `src/<feature>.rs` - модуль фичи + билдер роутов.
-- `src/<feature>/` - директория фичи. Флоу кода: `handlers -> service -> repository`.
+- `src/features/<feature>.rs` - модуль фичи + билдер роутов.
+- `src/features/<feature>/` - директория фичи. Флоу кода: `handlers -> service -> repository`.
 - `models, requests, responses` - вспомогательные файлы с модельками.
-- `src/<feature>/partners.rs` - опциональный субмодуль с хендлерами `/partners/<partner_id>/<feature>...`, если у фичи есть партнерская зона видимости
+- `src/features/<feature>/partners.rs` - опциональный субмодуль с хендлерами `/partners/<partner_id>/<feature>...`, если у фичи есть партнерская зона видимости
 - `src/error.rs` - кастомный `ApiError`/`ApiResult`.
 - `src/state.rs` - `ApiState` содержит загруженный конфиг `config`, `decoding_key`, пул соединений к бд `pool`.
 - `src/http/` - `authorization`, `permissions`, `token`, `validation`, `middleware`.

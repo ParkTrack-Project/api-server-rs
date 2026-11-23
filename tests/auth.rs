@@ -5,9 +5,9 @@ use std::{
 };
 
 use api_server_rust::{
-    auth::repository,
     create_routes,
     error::{ApiError, ApiResult},
+    features::auth::repository,
     http::{permissions::GlobalRole, token::create_access_token},
     state::{ApiConfig, ApiState},
     utils::{hasher, smtp_service::EmailService},
@@ -597,7 +597,7 @@ async fn logout_supports_legacy_tokens_and_revokes_access_to_other_features(pool
 
 #[sqlx::test(fixtures(path = "../fixtures", scripts("auth")))]
 async fn password_reset_follows_account_when_email_changes(pool: PgPool) {
-    use api_server_rust::users::models::Users;
+    use api_server_rust::features::users::models::Users;
     use sea_query::{Expr, ExprTrait, PostgresQueryBuilder, Query};
     use sea_query_sqlx::SqlxBinder;
 

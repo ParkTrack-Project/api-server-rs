@@ -6,7 +6,7 @@ use super::{
     repository::db_error,
     requests,
 };
-use crate::{error::ApiResult, users::models::Users as U};
+use crate::{error::ApiResult, features::users::models::Users as U};
 use sea_query::{Cond, Expr, ExprTrait, PostgresQueryBuilder, Query};
 use sea_query_sqlx::SqlxBinder;
 use sqlx::PgExecutor;
