@@ -126,6 +126,7 @@ pub async fn find_partner_memberships_by_user_id(
         .from(PartnerMemberships::Table)
         .columns(PARTNER_MEMBERSHIP_COLUMNS)
         .and_where(Expr::col(PartnerMemberships::UserId).eq(user_id))
+        .and_where(Expr::col(PartnerMemberships::IsActive).eq(true))
         .build_sqlx(PostgresQueryBuilder);
 
     sqlx::query_as_with::<_, PartnerMembershipRow, _>(sqlx::AssertSqlSafe(sql), values)

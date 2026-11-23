@@ -188,3 +188,86 @@ impl FromRequestParts<ApiState> for AuthenticatedUserOrAdmin {
         }))
     }
 }
+
+/// Authenticated identity in one partner. Membership permissions never become global permissions.
+#[derive(Debug)]
+pub struct PartnerContext {
+    pub user_id: i32,
+    pub partner_id: i32,
+    pub membership: Option<crate::partners::models::MemberRow>,
+    permissions: Vec<Permission>,
+    is_admin: bool,
+}
+impl PartnerContext {
+    pub fn scope(&self) -> crate::partners::member_repository::MemberAccess {
+        crate::partners::member_repository::MemberAccess::Partner {
+            partner_id: self.partner_id,
+        }
+    }
+}
+impl Authenticated for PartnerContext {
+    fn require(&self, permission: Permission) -> ApiResult<()> {
+        let allowed = if self.is_admin {
+            GlobalRole::Admin.get_permissions().contains(&permission)
+        } else {
+            self.permissions.contains(&permission)
+        };
+        if allowed {
+            Ok(())
+        } else {
+            Err(ApiError::Forbidden(permission))
+        }
+    }
+}
+impl FromRequestParts<ApiState> for PartnerContext {
+    type Rejection = ApiError;
+    async fn from_request_parts(parts: &mut Parts, state: &ApiState) -> ApiResult<Self> {
+        use crate::partners::{member_repository as repository, requests::PartnerId};
+        let AuthenticatedUserOrAdmin(identity) =
+            AuthenticatedUserOrAdmin::from_request_parts(parts, state).await?;
+        let axum::extract::Path(path) =
+            axum::extract::Path::<PartnerId>::from_request_parts(parts, state)
+                .await
+                .map_err(|_| ApiError::BadRequest("invalid partner id".into()))?;
+        if path.partner_id <= 0 {
+            return Err(ApiError::BadRequest("invalid partner id".into()));
+        }
+        let PublicAuthenticated::User {
+            user_id,
+            global_role,
+        } = identity
+        else {
+            return Err(ApiError::Unauthenticated);
+        };
+        if global_role == GlobalRole::Admin {
+            return Ok(Self {
+                user_id,
+                partner_id: path.partner_id,
+                membership: None,
+                permissions: Vec::new(),
+                is_admin: true,
+            });
+        }
+        let membership = repository::active_identity(&state.pool, path.partner_id, user_id)
+            .await?
+            .ok_or(ApiError::Forbidden(Permission::PartnerMembersView))?;
+        let scope = repository::MemberAccess::Partner {
+            partner_id: path.partner_id,
+        };
+        let mut granted = repository::permissions(&state.pool, scope, vec![user_id]).await?;
+        let permissions = granted
+            .remove(&user_id)
+            .unwrap_or_default()
+            .into_iter()
+            .filter(|p| !p.starts_with("admin."))
+            .filter_map(|p| p.parse::<Permission>().ok())
+            .collect();
+        Ok(Self {
+            user_id,
+            partner_id: path.partner_id,
+            membership: Some(membership),
+            permissions,
+            is_admin: false,
+        })
+    }
+}

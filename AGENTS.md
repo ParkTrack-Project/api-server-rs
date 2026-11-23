@@ -17,6 +17,126 @@
 - `tests/`, `fixtures/` - интеграционные тесты (`#[sqlx::test(fixtures(...))]`).
 - `migrations/` - golang-migrate. Правила — `migrations/AGENTS.md`.
 
+## Best practices
+
+### `<feature>/repository.rs`:
+- В update запросах
+
+*Делай*:
+
+```rust
+.values(
+  [
+    query.<поле>.map(|v| (<Название таблицы>::<Атрибут>, v.into()))
+    ... // все остальные поля
+  ]
+  .into_iter()
+  .flatten()
+)
+```
+
+*Вместо*:
+
+```rust
+if let Some(v) = query.<field1> {
+    update.value(<Table>::<Column>, v);
+}
+if let Some(v) = query.<field2> {
+    update.value(<Table>::<Column>, v);
+}
+if let Some(v) = query.<field3> {
+    update.value(<Table>::<Column>, v);
+}
+```
+
+- При подстановке `.columns()`
+
+*Делай*:
+
+```rust
+// в <feature>/models.rs
+
+pub const <TABLE>_COLUMNS: [<Table>; N] = [
+  <Table>::<Column>,
+  ... // для каждой колонки
+];
+
+// Референс
+
+pub const CAMERA_COLUMNS: [Cameras; 14] = [
+    Cameras::CameraId,
+    Cameras::Title,
+    Cameras::Source,
+    Cameras::ImageWidth,
+    Cameras::ImageHeight,
+    Cameras::Calib,
+    Cameras::Latitude,
+    Cameras::Longitude,
+    Cameras::PartnerId,
+    Cameras::CreatedByUserId,
+    Cameras::IsActive,
+    Cameras::LastSnapshotAt,
+    Cameras::CreatedAt,
+    Cameras::UpdatedAt,
+];
+```
+
+*Вместо*:
+
+```rust
+// <feature>/repository.rs
+
+pub fn columns()
+```
+
+*Если*: схема колонн переиспользуется в нескольких запросах
+
+- Фильтры
+
+*Делай*
+
+```rust
+q.apply_if(query.<field1>, |stmt, v| {
+    stmt.<condition method>(...);
+})
+.apply_if(query.<field2>, |stmt, v| {
+    stmt.<condition method>(...);
+})
+```
+
+*Вместо*:
+
+```rust
+if let Some(v) = query.<field1> {
+  stmt.<condition method>(...);
+}
+if let Some(v) = query.<field2> {
+  stmt.<condition method>(...);
+}
+```
+
+Потому что семантика фильтра у `.apply_if()` более очевидна, чем у `if let Some(v) = query.<field> {...}`
+
+- Нейминг у CRUD методов create, list, update, delete для основной модели фичи
+
+*Делай*:
+
+```rust
+create_<feature>()
+list_<feature>()
+update_<feature>()
+delete_<feature>()
+```
+
+*Вместо*:
+
+```rust
+create()
+list()
+update()
+delete()
+```
+
 ## Поведение
 - ✅ Always: fmt + clippy + test; DTO — в `requests`/`responses`; проверка прав —
   `current_user.require(Permission::*)` в хендлере; доступ к данным — через

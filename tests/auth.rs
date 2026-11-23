@@ -236,7 +236,7 @@ async fn me_returns_memberships_and_requires_user_token(pool: PgPool) {
                 body["partner_memberships"][0]["permissions"],
                 json!(["cameras:read"])
             );
-            assert_eq!(body["partner_memberships"][0]["read_scope"], "all");
+            assert_eq!(body["partner_memberships"][0]["read_scope"], "partner_all");
         } else {
             assert_eq!(body["partner_memberships"], json!([]));
         }

@@ -197,7 +197,7 @@ fn public_scope(current_user: &PublicAuthenticated, scope: ScopeType) -> CameraA
 //         PartnerAuthenticated::Admin { .. } => CameraAccess::Partner { partner_id },
 //         PartnerAuthenticated::Member {
 //             user_id,
-//             view_scope: Scope::Owned,
+//             view_scope: Scope::Own,
 //             ..
 //         } => {
 //             CameraAccess::PartnerOwned {

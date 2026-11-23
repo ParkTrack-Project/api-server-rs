@@ -8,7 +8,7 @@ INSERT INTO partners (partner_id, legal_name, slug, contact_email, contact_phone
 VALUES (101, 'Auth Test Partner', 'auth-test-partner', 'partner@example.com', '88005553535');
 
 INSERT INTO partner_memberships (user_id, partner_id, user_role, read_scope, write_scope, delete_scope)
-VALUES (101, 101, 'member', 'all', 'own', 'own');
+VALUES (101, 101, 'member', 'partner_all', 'own', 'own');
 
 INSERT INTO partner_member_permissions (user_id, partner_id, permission)
 VALUES (101, 101, 'cameras:read');

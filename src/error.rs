@@ -8,39 +8,51 @@ use crate::http::permissions::Permission;
 #[derive(Debug, Error)]
 #[non_exhaustive]
 pub enum ApiError {
+    // 400
     #[error("invalid request body")]
     BadRequest(String),
 
+    // 404
     #[error("{0} not found")]
     NotFound(String),
 
+    // 409
     #[error("entity already exists")]
     Conflict(String),
 
+    // 401
     #[error("missing or invalid authorization header")]
     Unauthenticated,
 
-    #[error("Account is disable()d")]
+    // 401
+    #[error("Account is disabled")]
     AccountDisabled,
 
+    // 401
     #[error("invalid login or password")]
     InvalidCredentials,
 
+    // 401
     #[error("token expired")]
     TokenExpired,
 
+    // 401
     #[error("invalid token")]
     InvalidToken,
 
+    // 403
     #[error("missing permission: {0}")]
     Forbidden(Permission),
 
+    // 400
     #[error(transparent)]
     ValidationError(#[from] ValidationErrors),
 
+    // 500
     #[error(transparent)]
     InternalError(#[from] anyhow::Error),
 
+    // 503
     #[error("{0}")]
     ServiceUnavailable(String),
 }

@@ -26,10 +26,12 @@ impl GlobalRole {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Display, EnumString, AsRefStr)]
 #[non_exhaustive]
 pub enum Scope {
-    #[strum(serialize = "owned")]
-    Owned,
+    #[strum(serialize = "own")]
+    Own,
     #[strum(serialize = "partner_all")]
     PartnerAll,
+    #[strum(serialize = "none")]
+    None,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

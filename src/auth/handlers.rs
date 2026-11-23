@@ -6,6 +6,7 @@ use axum_macros::debug_handler;
 use axum_valid::Valid;
 
 use crate::auth::service;
+use crate::error::ApiError;
 use crate::error::ApiResult;
 use crate::http::authorization::AuthenticatedUserOrAdmin;
 use crate::http::authorization::PublicAuthenticated;
@@ -74,7 +75,7 @@ pub async fn get_me(
 ) -> ApiResult<responses::Me> {
     // Возможно есть более правильный способ сделать это...
     let PublicAuthenticated::User { user_id, .. } = current_user else {
-        unreachable!();
+        return Err(ApiError::Unauthenticated);
     };
 
     service::me(&state, user_id).await

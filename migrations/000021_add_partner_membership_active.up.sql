@@ -1,0 +1,2 @@
+ALTER TABLE partner_memberships
+    ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT TRUE;
