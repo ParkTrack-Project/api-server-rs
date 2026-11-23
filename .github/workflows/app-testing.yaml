@@ -11,16 +11,21 @@ jobs:
         image: postgres:18-alpine
         env:
           POSTGRES_PASSWORD: password
-          POSTGRES_DB: master_test_db
+          POSTGRES_USER: sqlx_test
+          POSTGRES_DB: api_server_rust_tests
+        options: >-
+          --health-cmd "pg_isready -U sqlx_test -d api_server_rust_tests"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
         ports:
           - 5432:5432
 
     steps:
       - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@1.94.0
-      - uses: swatinem/rust-cache@v2
+      - uses: dtolnay/rust-toolchain@1.98.1
       - name: Run tests
         env:
-          DATABASE_URL: postgres://postgres:password@localhost:5432/master_test_db
-        run: cargo test
+          TEST_DATABASE_URL: postgres://sqlx_test:password@localhost:5432/api_server_rust_tests
+        run: bash scripts/test.sh
         
