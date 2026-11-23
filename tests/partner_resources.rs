@@ -1,3 +1,5 @@
+mod support;
+
 use api_server_rust::{
     create_routes,
     http::{permissions::GlobalRole, token::create_access_token},
@@ -10,13 +12,13 @@ use axum::{
 };
 use jsonwebtoken::DecodingKey;
 use serde_json::{Value, json};
-use sqlx::PgPool;
+use sqlx::{ConnectOptions, PgPool};
 use tower::ServiceExt;
 const SECRET: &str = "partner-resources-key";
 async fn app(pool: PgPool) -> Router {
     let config = ApiConfig {
         api_token: "test-api-token".into(),
-        database_url: String::new(),
+        database_url: pool.connect_options().to_url_lossy().to_string(),
         jwt_secret: SECRET.into(),
         jwt_expire_seconds: 3600,
         smtp_host: String::new(),
@@ -96,7 +98,10 @@ fn update(feature: &str) -> Value {
     }
 }
 
-#[sqlx::test(fixtures(path = "../fixtures", scripts("partner_resources")))]
+#[sqlx::test(
+    migrator = "crate::support::MIGRATOR",
+    fixtures(path = "../fixtures", scripts("partner_resources"))
+)]
 async fn own_scope_filters_every_resource_operation(pool: PgPool) {
     //Arrange
     let app = app(pool).await;
@@ -164,7 +169,10 @@ async fn own_scope_filters_every_resource_operation(pool: PgPool) {
     assert_eq!(zone.0, StatusCode::NO_CONTENT);
     assert_eq!(camera.0, StatusCode::NO_CONTENT);
 }
-#[sqlx::test(fixtures(path = "../fixtures", scripts("partner_resources")))]
+#[sqlx::test(
+    migrator = "crate::support::MIGRATOR",
+    fixtures(path = "../fixtures", scripts("partner_resources"))
+)]
 async fn partner_all_and_admin_remain_tenant_bound(pool: PgPool) {
     //Arrange
     let app = app(pool).await;
@@ -265,7 +273,10 @@ async fn partner_all_and_admin_remain_tenant_bound(pool: PgPool) {
     assert_eq!(items(&mapped).len(), 1);
     assert!(items(&mapped)[0].get("image_polygon").is_none());
 }
-#[sqlx::test(fixtures(path = "../fixtures", scripts("partner_resources")))]
+#[sqlx::test(
+    migrator = "crate::support::MIGRATOR",
+    fixtures(path = "../fixtures", scripts("partner_resources"))
+)]
 async fn denied_memberships_permissions_and_none_scope(pool: PgPool) {
     //Arrange
     let app = app(pool).await;
@@ -342,7 +353,10 @@ async fn denied_memberships_permissions_and_none_scope(pool: PgPool) {
         );
     }
 }
-#[sqlx::test(fixtures(path = "../fixtures", scripts("partner_resources")))]
+#[sqlx::test(
+    migrator = "crate::support::MIGRATOR",
+    fixtures(path = "../fixtures", scripts("partner_resources"))
+)]
 async fn creation_sets_tenant_and_actor_and_validates_zone_camera(pool: PgPool) {
     //Arrange
     let app = app(pool).await;
@@ -429,7 +443,10 @@ async fn creation_sets_tenant_and_actor_and_validates_zone_camera(pool: PgPool) 
     assert_eq!(moved["created_by_user_id"], 101);
     assert_eq!(moved["camera_id"], camera_id);
 }
-#[sqlx::test(fixtures(path = "../fixtures", scripts("partner_resources")))]
+#[sqlx::test(
+    migrator = "crate::support::MIGRATOR",
+    fixtures(path = "../fixtures", scripts("partner_resources"))
+)]
 async fn operation_scopes_are_independent(pool: PgPool) {
     //Arrange
     let app = app(pool).await;
@@ -468,7 +485,10 @@ async fn operation_scopes_are_independent(pool: PgPool) {
     }
 }
 
-#[sqlx::test(fixtures(path = "../fixtures", scripts("partner_resources")))]
+#[sqlx::test(
+    migrator = "crate::support::MIGRATOR",
+    fixtures(path = "../fixtures", scripts("partner_resources"))
+)]
 async fn api_tokens_and_logged_out_tokens_cannot_access_partner_resources(pool: PgPool) {
     //Arrange
     let app = app(pool).await;

@@ -17,8 +17,8 @@ pub enum GlobalRole {
 impl GlobalRole {
     pub fn get_permissions(&self) -> &[Permission] {
         match &self {
-            GlobalRole::Admin => &*ADMIN_PERMISSIONS,
-            GlobalRole::User => &*USER_PERMISSIONS,
+            GlobalRole::Admin => &ADMIN_PERMISSIONS,
+            GlobalRole::User => &USER_PERMISSIONS,
         }
     }
 }

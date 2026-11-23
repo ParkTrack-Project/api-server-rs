@@ -1,7 +1,6 @@
 use axum::{
     Json,
     extract::{Path, Query, State},
-    http::StatusCode,
     response::IntoResponse,
 };
 use axum_macros::debug_handler;

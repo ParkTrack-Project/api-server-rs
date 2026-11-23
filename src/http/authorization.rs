@@ -33,13 +33,13 @@ impl Authenticated for PublicAuthenticated {
             Self::User { global_role, .. } => {
                 let effective_permissions = global_role.get_permissions();
 
-                return match effective_permissions.contains(&permission) {
+                match effective_permissions.contains(&permission) {
                     true => Ok(()),
                     false => Err(ApiError::Forbidden(permission)),
-                };
+                }
             }
             Self::ApiToken => {
-                return Ok(());
+                Ok(())
             }
         }
     }
@@ -65,19 +65,19 @@ impl Authenticated for PartnerAuthenticated {
             Self::Admin { .. } => {
                 let effective_permissions = GlobalRole::Admin.get_permissions();
 
-                return match effective_permissions.contains(&permission) {
+                match effective_permissions.contains(&permission) {
                     true => Ok(()),
                     false => Err(ApiError::Forbidden(permission)),
-                };
+                }
             }
             Self::Member {
                 permissions: effective_permissions,
                 ..
             } => {
-                return match effective_permissions.contains(&permission) {
+                match effective_permissions.contains(&permission) {
                     true => Ok(()),
                     false => Err(ApiError::Forbidden(permission)),
-                };
+                }
             }
         }
     }

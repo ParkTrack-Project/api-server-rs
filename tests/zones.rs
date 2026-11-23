@@ -1,3 +1,5 @@
+mod support;
+
 use api_server_rust::{
     create_routes,
     features::zones::repository::{self, ZoneAccess},
@@ -11,13 +13,13 @@ use axum::{
 };
 use jsonwebtoken::DecodingKey;
 use serde_json::{Value, json};
-use sqlx::PgPool;
+use sqlx::{ConnectOptions, PgPool};
 use tower::ServiceExt;
 const SECRET: &str = "zones-test-key";
 async fn app(pool: PgPool) -> Router {
     let config = ApiConfig {
         api_token: "test-api-token".into(),
-        database_url: String::new(),
+        database_url: pool.connect_options().to_url_lossy().to_string(),
         jwt_secret: SECRET.into(),
         jwt_expire_seconds: 3600,
         smtp_host: String::new(),
@@ -95,7 +97,10 @@ async fn create(app: &Router, camera: i32) -> i64 {
     b["zone_id"].as_i64().unwrap()
 }
 
-#[sqlx::test(fixtures(path = "../fixtures", scripts("zones")))]
+#[sqlx::test(
+    migrator = "crate::support::MIGRATOR",
+    fixtures(path = "../fixtures", scripts("zones"))
+)]
 async fn zone_crud_and_occupancy(pool: PgPool) {
     // Arrange
     let app = app(pool).await;
@@ -162,7 +167,10 @@ async fn zone_crud_and_occupancy(pool: PgPool) {
         StatusCode::NOT_FOUND
     );
 }
-#[sqlx::test(fixtures(path = "../fixtures", scripts("zones")))]
+#[sqlx::test(
+    migrator = "crate::support::MIGRATOR",
+    fixtures(path = "../fixtures", scripts("zones"))
+)]
 async fn permissions_and_partner_visibility(pool: PgPool) {
     // Arrange
     let app = app(pool).await;
@@ -227,7 +235,10 @@ async fn permissions_and_partner_visibility(pool: PgPool) {
         StatusCode::FORBIDDEN
     );
 }
-#[sqlx::test(fixtures(path = "../fixtures", scripts("zones")))]
+#[sqlx::test(
+    migrator = "crate::support::MIGRATOR",
+    fixtures(path = "../fixtures", scripts("zones"))
+)]
 async fn list_filters_and_map_projection(pool: PgPool) {
     // Arrange
     let app = app(pool).await;
@@ -281,7 +292,10 @@ async fn list_filters_and_map_projection(pool: PgPool) {
         1
     );
 }
-#[sqlx::test(fixtures(path = "../fixtures", scripts("zones")))]
+#[sqlx::test(
+    migrator = "crate::support::MIGRATOR",
+    fixtures(path = "../fixtures", scripts("zones"))
+)]
 async fn validation_and_missing_camera(pool: PgPool) {
     // Arrange
     let app = app(pool).await;
@@ -332,7 +346,10 @@ async fn validation_and_missing_camera(pool: PgPool) {
         StatusCode::CREATED
     );
 }
-#[sqlx::test(fixtures(path = "../fixtures", scripts("zones")))]
+#[sqlx::test(
+    migrator = "crate::support::MIGRATOR",
+    fixtures(path = "../fixtures", scripts("zones"))
+)]
 async fn repository_scopes(pool: PgPool) {
     // Arrange
     let app = app(pool.clone()).await;
@@ -381,7 +398,10 @@ async fn repository_scopes(pool: PgPool) {
     );
 }
 
-#[sqlx::test(fixtures(path = "../fixtures", scripts("zones")))]
+#[sqlx::test(
+    migrator = "crate::support::MIGRATOR",
+    fixtures(path = "../fixtures", scripts("zones"))
+)]
 async fn nullable_filters_and_server_owned_fields(pool: PgPool) {
     // Arrange
     let app = app(pool).await;
@@ -445,7 +465,10 @@ async fn nullable_filters_and_server_owned_fields(pool: PgPool) {
     assert_eq!(updated["created_by_user_id"], 102);
 }
 
-#[sqlx::test(fixtures(path = "../fixtures", scripts("zones")))]
+#[sqlx::test(
+    migrator = "crate::support::MIGRATOR",
+    fixtures(path = "../fixtures", scripts("zones"))
+)]
 async fn concurrent_updates_preserve_capacity_invariant(pool: PgPool) {
     // Arrange
     let app = app(pool).await;

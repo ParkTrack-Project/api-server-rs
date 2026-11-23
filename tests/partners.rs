@@ -1,3 +1,5 @@
+mod support;
+
 use api_server_rust::{
     create_routes,
     http::{permissions::GlobalRole, token::create_access_token},
@@ -10,13 +12,13 @@ use axum::{
 };
 use jsonwebtoken::DecodingKey;
 use serde_json::{Value, json};
-use sqlx::PgPool;
+use sqlx::{ConnectOptions, PgPool};
 use tower::ServiceExt;
 const SECRET: &str = "partners-test-key";
 async fn app(pool: PgPool) -> Router {
     let config = ApiConfig {
         api_token: "test-api-token".into(),
-        database_url: String::new(),
+        database_url: pool.connect_options().to_url_lossy().to_string(),
         jwt_secret: SECRET.into(),
         jwt_expire_seconds: 3600,
         smtp_host: String::new(),
@@ -68,7 +70,10 @@ async fn request(
 fn payload() -> Value {
     json!({"name":"New Partner","slug":"new-partner","contact_email":"new@example.com","contact_phone":"+79990000003"})
 }
-#[sqlx::test(fixtures(path = "../fixtures", scripts("partners")))]
+#[sqlx::test(
+    migrator = "crate::support::MIGRATOR",
+    fixtures(path = "../fixtures", scripts("partners"))
+)]
 async fn partner_crud_and_soft_delete(pool: PgPool) {
     //Arrange
     let app = app(pool).await;
@@ -94,7 +99,10 @@ async fn partner_crud_and_soft_delete(pool: PgPool) {
     assert_eq!(gs, StatusCode::OK);
     assert_eq!(disabled["is_active"], false);
 }
-#[sqlx::test(fixtures(path = "../fixtures", scripts("partners")))]
+#[sqlx::test(
+    migrator = "crate::support::MIGRATOR",
+    fixtures(path = "../fixtures", scripts("partners"))
+)]
 async fn organization_visibility_and_pagination(pool: PgPool) {
     //Arrange
     let app = app(pool).await;
@@ -141,7 +149,10 @@ async fn organization_visibility_and_pagination(pool: PgPool) {
         );
     }
 }
-#[sqlx::test(fixtures(path = "../fixtures", scripts("partners")))]
+#[sqlx::test(
+    migrator = "crate::support::MIGRATOR",
+    fixtures(path = "../fixtures", scripts("partners"))
+)]
 async fn organization_validation_and_conflicts(pool: PgPool) {
     //Arrange
     let app = app(pool).await;
@@ -203,7 +214,10 @@ async fn organization_validation_and_conflicts(pool: PgPool) {
 fn member_payload() -> Value {
     json!({"user_id":103,"role":"operator","permissions":["zones.view","cameras.view"],"read_scope":"partner_all","write_scope":"none","delete_scope":"own"})
 }
-#[sqlx::test(fixtures(path = "../fixtures", scripts("partners")))]
+#[sqlx::test(
+    migrator = "crate::support::MIGRATOR",
+    fixtures(path = "../fixtures", scripts("partners"))
+)]
 async fn member_crud_and_soft_disable(pool: PgPool) {
     //Arrange
     let app = app(pool).await;
@@ -274,7 +288,10 @@ async fn member_crud_and_soft_disable(pool: PgPool) {
     assert_eq!(restored["permissions"], json!([]));
     assert_eq!(restored["is_active"], true);
 }
-#[sqlx::test(fixtures(path = "../fixtures", scripts("partners")))]
+#[sqlx::test(
+    migrator = "crate::support::MIGRATOR",
+    fixtures(path = "../fixtures", scripts("partners"))
+)]
 async fn members_filter_and_pagination(pool: PgPool) {
     //Arrange
     let app = app(pool).await;
@@ -323,7 +340,10 @@ async fn members_filter_and_pagination(pool: PgPool) {
     .await;
     assert_eq!(empty["total"], 0);
 }
-#[sqlx::test(fixtures(path = "../fixtures", scripts("partners")))]
+#[sqlx::test(
+    migrator = "crate::support::MIGRATOR",
+    fixtures(path = "../fixtures", scripts("partners"))
+)]
 async fn membership_validation_conflicts_and_missing_rows(pool: PgPool) {
     //Arrange
     let app = app(pool).await;
@@ -404,7 +424,10 @@ async fn membership_validation_conflicts_and_missing_rows(pool: PgPool) {
         );
     }
 }
-#[sqlx::test(fixtures(path = "../fixtures", scripts("partners")))]
+#[sqlx::test(
+    migrator = "crate::support::MIGRATOR",
+    fixtures(path = "../fixtures", scripts("partners"))
+)]
 async fn membership_access_is_scoped_and_revoked_on_disable(pool: PgPool) {
     //Arrange
     let app = app(pool).await;
@@ -449,7 +472,10 @@ async fn membership_access_is_scoped_and_revoked_on_disable(pool: PgPool) {
         );
     }
 }
-#[sqlx::test(fixtures(path = "../fixtures", scripts("partners")))]
+#[sqlx::test(
+    migrator = "crate::support::MIGRATOR",
+    fixtures(path = "../fixtures", scripts("partners"))
+)]
 async fn member_permissions_are_checked_for_each_action(pool: PgPool) {
     //Arrange
     let app = app(pool).await;
@@ -511,10 +537,13 @@ async fn member_permissions_are_checked_for_each_action(pool: PgPool) {
     );
 }
 
-#[sqlx::test(fixtures(
-    path = "../fixtures",
-    scripts("partners", "partner_permission_failure")
-))]
+#[sqlx::test(
+    migrator = "crate::support::MIGRATOR",
+    fixtures(
+        path = "../fixtures",
+        scripts("partners", "partner_permission_failure")
+    )
+)]
 async fn membership_and_permission_changes_roll_back_together(pool: PgPool) {
     //Arrange
     let app = app(pool).await;
@@ -562,7 +591,10 @@ async fn membership_and_permission_changes_roll_back_together(pool: PgPool) {
     assert_eq!(unchanged["role"], "operator");
     assert_eq!(unchanged["permissions"], json!(["sources.view"]));
 }
-#[sqlx::test(fixtures(path = "../fixtures", scripts("partners")))]
+#[sqlx::test(
+    migrator = "crate::support::MIGRATOR",
+    fixtures(path = "../fixtures", scripts("partners"))
+)]
 async fn concurrent_permission_replacements_never_merge(pool: PgPool) {
     //Arrange
     let app = app(pool).await;
@@ -608,7 +640,10 @@ async fn concurrent_permission_replacements_never_merge(pool: PgPool) {
     );
 }
 
-#[sqlx::test(fixtures(path = "../fixtures", scripts("partners")))]
+#[sqlx::test(
+    migrator = "crate::support::MIGRATOR",
+    fixtures(path = "../fixtures", scripts("partners"))
+)]
 async fn membership_scopes_accept_only_supported_values(pool: PgPool) {
     //Arrange
     let app = app(pool).await;
@@ -680,7 +715,10 @@ async fn membership_scopes_accept_only_supported_values(pool: PgPool) {
     }
 }
 
-#[sqlx::test(fixtures(path = "../fixtures", scripts("partners")))]
+#[sqlx::test(
+    migrator = "crate::support::MIGRATOR",
+    fixtures(path = "../fixtures", scripts("partners"))
+)]
 async fn scope_migration_normalizes_legacy_rows_and_enforces_constraints(pool: PgPool) {
     use api_server_rust::features::partners::{
         member_repository::{self, MemberAccess},

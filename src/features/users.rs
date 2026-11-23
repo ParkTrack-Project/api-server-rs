@@ -1,5 +1,3 @@
-use crate::state::ApiState;
-
 pub mod handlers;
 pub mod models;
 pub mod repository;

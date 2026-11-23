@@ -1,3 +1,5 @@
+mod support;
+
 use std::{
     future::Future,
     pin::Pin,
@@ -19,7 +21,7 @@ use axum::{
 };
 use jsonwebtoken::DecodingKey;
 use serde_json::{Value, json};
-use sqlx::PgPool;
+use sqlx::{ConnectOptions, PgPool};
 use tower::ServiceExt;
 
 const PASSWORD: &str = "initial-password";
@@ -59,7 +61,7 @@ async fn app(pool: PgPool, mail: Arc<MockEmail>) -> Router {
     }
     let config = ApiConfig {
         api_token: "test-api-token".into(),
-        database_url: String::new(),
+        database_url: pool.connect_options().to_url_lossy().to_string(),
         jwt_secret: SECRET.into(),
         jwt_expire_seconds: 3600,
         smtp_host: String::new(),
@@ -118,7 +120,10 @@ async fn login(app: &Router, email: &str, password: &str) -> (StatusCode, Value)
     .await
 }
 
-#[sqlx::test(fixtures(path = "../fixtures", scripts("auth")))]
+#[sqlx::test(
+    migrator = "crate::support::MIGRATOR",
+    fixtures(path = "../fixtures", scripts("auth"))
+)]
 async fn register_creates_user_and_usable_access_token(pool: PgPool) {
     // Arrange
     let app = app(pool.clone(), Arc::default()).await;
@@ -156,7 +161,10 @@ async fn register_creates_user_and_usable_access_token(pool: PgPool) {
     );
 }
 
-#[sqlx::test(fixtures(path = "../fixtures", scripts("auth")))]
+#[sqlx::test(
+    migrator = "crate::support::MIGRATOR",
+    fixtures(path = "../fixtures", scripts("auth"))
+)]
 async fn register_validates_input_and_accepts_optional_fields(pool: PgPool) {
     // Arrange
     let app = app(pool, Arc::default()).await;
@@ -185,7 +193,10 @@ async fn register_validates_input_and_accepts_optional_fields(pool: PgPool) {
     assert_eq!(status, StatusCode::OK, "{body}");
 }
 
-#[sqlx::test(fixtures(path = "../fixtures", scripts("auth")))]
+#[sqlx::test(
+    migrator = "crate::support::MIGRATOR",
+    fixtures(path = "../fixtures", scripts("auth"))
+)]
 async fn login_checks_password_account_status_and_role(pool: PgPool) {
     // Arrange
     let app = app(pool, Arc::default()).await;
@@ -216,7 +227,10 @@ async fn login_checks_password_account_status_and_role(pool: PgPool) {
     }
 }
 
-#[sqlx::test(fixtures(path = "../fixtures", scripts("auth")))]
+#[sqlx::test(
+    migrator = "crate::support::MIGRATOR",
+    fixtures(path = "../fixtures", scripts("auth"))
+)]
 async fn me_returns_memberships_and_requires_user_token(pool: PgPool) {
     // Arrange
     let app = app(pool, Arc::default()).await;
@@ -256,7 +270,10 @@ async fn me_returns_memberships_and_requires_user_token(pool: PgPool) {
     );
 }
 
-#[sqlx::test(fixtures(path = "../fixtures", scripts("auth")))]
+#[sqlx::test(
+    migrator = "crate::support::MIGRATOR",
+    fixtures(path = "../fixtures", scripts("auth"))
+)]
 async fn password_reset_request_hashes_token_and_hides_unknown_email(pool: PgPool) {
     // Arrange
     let mail = Arc::new(MockEmail::default());
@@ -311,7 +328,10 @@ async fn password_reset_request_hashes_token_and_hides_unknown_email(pool: PgPoo
     );
 }
 
-#[sqlx::test(fixtures(path = "../fixtures", scripts("auth")))]
+#[sqlx::test(
+    migrator = "crate::support::MIGRATOR",
+    fixtures(path = "../fixtures", scripts("auth"))
+)]
 async fn password_reset_reports_email_delivery_failure(pool: PgPool) {
     // Arrange
     let mail = Arc::new(MockEmail {
@@ -337,7 +357,10 @@ async fn password_reset_reports_email_delivery_failure(pool: PgPool) {
     );
 }
 
-#[sqlx::test(fixtures(path = "../fixtures", scripts("auth")))]
+#[sqlx::test(
+    migrator = "crate::support::MIGRATOR",
+    fixtures(path = "../fixtures", scripts("auth"))
+)]
 async fn password_reset_confirm_changes_password_once_and_allows_new_request(pool: PgPool) {
     // Arrange
     let mail = Arc::new(MockEmail::default());
@@ -394,7 +417,10 @@ async fn password_reset_confirm_changes_password_once_and_allows_new_request(poo
     );
 }
 
-#[sqlx::test(fixtures(path = "../fixtures", scripts("auth")))]
+#[sqlx::test(
+    migrator = "crate::support::MIGRATOR",
+    fixtures(path = "../fixtures", scripts("auth"))
+)]
 async fn password_reset_rejects_invalid_expired_and_replaced_tokens(pool: PgPool) {
     // Arrange
     let app = app(pool.clone(), Arc::default()).await;
@@ -447,7 +473,10 @@ async fn password_reset_rejects_invalid_expired_and_replaced_tokens(pool: PgPool
     assert_eq!(request(&app, "POST", "password-reset/confirm", json!({"email": "missing@example.com", "token": "unused", "new_password": "changed-password"}), None).await.0, StatusCode::NOT_FOUND);
 }
 
-#[sqlx::test(fixtures(path = "../fixtures", scripts("auth")))]
+#[sqlx::test(
+    migrator = "crate::support::MIGRATOR",
+    fixtures(path = "../fixtures", scripts("auth"))
+)]
 async fn concurrent_password_reset_only_succeeds_once(pool: PgPool) {
     // Arrange
     let app = app(pool.clone(), Arc::default()).await;
@@ -479,7 +508,10 @@ async fn concurrent_password_reset_only_succeeds_once(pool: PgPool) {
     assert_eq!(statuses, [StatusCode::NO_CONTENT, StatusCode::UNAUTHORIZED]);
 }
 
-#[sqlx::test(fixtures(path = "../fixtures", scripts("auth")))]
+#[sqlx::test(
+    migrator = "crate::support::MIGRATOR",
+    fixtures(path = "../fixtures", scripts("auth"))
+)]
 async fn logout_revokes_only_current_token(pool: PgPool) {
     // Arrange
     let app = app(pool.clone(), Arc::default()).await;
@@ -523,7 +555,10 @@ async fn logout_revokes_only_current_token(pool: PgPool) {
     }
 }
 
-#[sqlx::test(fixtures(path = "../fixtures", scripts("auth")))]
+#[sqlx::test(
+    migrator = "crate::support::MIGRATOR",
+    fixtures(path = "../fixtures", scripts("auth"))
+)]
 async fn protected_handlers_reject_expired_and_forged_tokens(pool: PgPool) {
     // Arrange
     let app = app(pool, Arc::default()).await;
@@ -549,7 +584,10 @@ async fn protected_handlers_reject_expired_and_forged_tokens(pool: PgPool) {
     }
 }
 
-#[sqlx::test(fixtures(path = "../fixtures", scripts("auth")))]
+#[sqlx::test(
+    migrator = "crate::support::MIGRATOR",
+    fixtures(path = "../fixtures", scripts("auth"))
+)]
 async fn logout_supports_legacy_tokens_and_revokes_access_to_other_features(pool: PgPool) {
     // Arrange
     let app = app(pool, Arc::default()).await;
@@ -595,7 +633,10 @@ async fn logout_supports_legacy_tokens_and_revokes_access_to_other_features(pool
     );
 }
 
-#[sqlx::test(fixtures(path = "../fixtures", scripts("auth")))]
+#[sqlx::test(
+    migrator = "crate::support::MIGRATOR",
+    fixtures(path = "../fixtures", scripts("auth"))
+)]
 async fn password_reset_follows_account_when_email_changes(pool: PgPool) {
     use api_server_rust::features::users::models::Users;
     use sea_query::{Expr, ExprTrait, PostgresQueryBuilder, Query};

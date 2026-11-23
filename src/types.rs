@@ -58,15 +58,10 @@ impl<'de> Deserialize<'de> for Bbox {
     }
 }
 
-#[derive(Debug, Clone, Copy, Deserialize, PartialEq)]
+#[derive(Default, Debug, Clone, Copy, Deserialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum CameraView {
+    #[default]
     Full,
     Map,
-}
-
-impl Default for CameraView {
-    fn default() -> Self {
-        CameraView::Full
-    }
 }

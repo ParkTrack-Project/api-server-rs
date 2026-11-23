@@ -130,16 +130,16 @@ pub async fn create_camera_with_partner(
         .fetch_one(pool)
         .await
         .map_err(|e| {
-            if let sqlx::Error::Database(db_err) = &e {
-                if db_err.is_unique_violation() {
+            if let sqlx::Error::Database(db_err) = &e
+                && db_err.is_unique_violation() {
                     return ApiError::Conflict("camera already exists".to_string());
                 }
-            }
+            
 
-            return ApiError::InternalError(
+            ApiError::InternalError(
                 anyhow::Error::from(e)
                     .context(format!("creating new camera with title {}", query.title)),
-            );
+            )
         })
 }
 

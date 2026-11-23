@@ -1,13 +1,3 @@
-use sea_query::Expr;
-use sqlx::PgExecutor;
-
-use crate::{
-    error::ApiResult,
-    features::users::models::{UserRow, Users},
-};
-
-use super::requests;
-
 // pub async fn update_user(
 //     pool: impl PgExecutor<'_>,
 //     user_id: i32,

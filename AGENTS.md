@@ -16,6 +16,8 @@
 - `src/types.rs` - общие типы.
 - `src/utils/` - зашаренный функционал
 - `tests/`, `fixtures/` - интеграционные тесты (`#[sqlx::test(fixtures(...))]`).
+  Все `#[sqlx::test]` используют `migrator = "crate::support::MIGRATOR"`: проверка тестового подключения должна выполняться до любых операций SQLx.
+  Запуск: `bash scripts/test.sh`; подключение — только `TEST_DATABASE_URL` из окружения или `.env.test`, без fallback на обычный `.env`.
 - `migrations/` - golang-migrate. Правила — `migrations/AGENTS.md`.
 
 ## Best practices

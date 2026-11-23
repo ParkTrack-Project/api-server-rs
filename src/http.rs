@@ -1,4 +1,4 @@
-use axum::{Json, Router, extract::State, http::StatusCode, response::IntoResponse, routing::get};
+use axum::{Json, Router, extract::State, response::IntoResponse, routing::get};
 use axum_macros::debug_handler;
 use serde_json::json;
 
