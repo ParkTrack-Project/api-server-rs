@@ -1,4 +1,4 @@
-use axum::{Json, Router, extract::State, http::StatusCode, response::IntoResponse, routing::get};
+use axum::{Json, Router, extract::State, response::IntoResponse, routing::get};
 use axum_macros::debug_handler;
 use serde_json::json;
 
@@ -10,8 +10,8 @@ use crate::{
 pub mod authorization;
 pub mod middleware;
 pub mod permissions;
-mod token;
-mod validation;
+pub mod token;
+pub mod validation;
 
 #[debug_handler]
 pub async fn health_check(State(state): State<ApiState>) -> ApiResult<()> {

@@ -17,8 +17,8 @@ pub enum GlobalRole {
 impl GlobalRole {
     pub fn get_permissions(&self) -> &[Permission] {
         match &self {
-            GlobalRole::Admin => &*ADMIN_PERMISSIONS,
-            GlobalRole::User => &*USER_PERMISSIONS,
+            GlobalRole::Admin => &ADMIN_PERMISSIONS,
+            GlobalRole::User => &USER_PERMISSIONS,
         }
     }
 }
@@ -26,10 +26,12 @@ impl GlobalRole {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Display, EnumString, AsRefStr)]
 #[non_exhaustive]
 pub enum Scope {
-    #[strum(serialize = "owned")]
-    Owned,
+    #[strum(serialize = "own")]
+    Own,
     #[strum(serialize = "partner_all")]
     PartnerAll,
+    #[strum(serialize = "none")]
+    None,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -39,7 +41,7 @@ pub enum ScopeType {
     Delete,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Display, EnumString, AsRefStr)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Display, EnumString, AsRefStr, Serialize)]
 pub enum Permission {
     #[strum(serialize = "admin.analytics.view")]
     AdminAnalyticsView,
@@ -113,7 +115,7 @@ pub enum Permission {
     ZonesView,
 }
 
-static USER_PERMISSIONS: LazyLock<Vec<Permission>> = LazyLock::new(|| {
+pub static USER_PERMISSIONS: LazyLock<Vec<Permission>> = LazyLock::new(|| {
     vec![
         Permission::UsersMeManage,
         Permission::MapView,
@@ -128,7 +130,7 @@ static USER_PERMISSIONS: LazyLock<Vec<Permission>> = LazyLock::new(|| {
     ]
 });
 
-static ADMIN_PERMISSIONS: LazyLock<Vec<Permission>> = LazyLock::new(|| {
+pub static ADMIN_PERMISSIONS: LazyLock<Vec<Permission>> = LazyLock::new(|| {
     [
         USER_PERMISSIONS.clone(),
         vec![

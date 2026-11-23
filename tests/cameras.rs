@@ -1,10 +1,21 @@
+mod support;
+
 mod repository {
-    use api_server_rust::{cameras::{repository::CameraAccess, *}, error::{ApiError, ApiResult}, types::Bbox};
+    use std::assert_matches;
+
+    use api_server_rust::{
+        error::{ApiResult},
+        features::cameras::{repository::CameraAccess, *},
+        types::Bbox,
+    };
     use sqlx::PgPool;
 
     const FIXTURE_CAMERAS_COUNT: u32 = 7;
 
-    #[sqlx::test(fixtures(path = "../fixtures", scripts("cameras")))]
+    #[sqlx::test(
+        migrator = "crate::support::MIGRATOR",
+        fixtures(path = "../fixtures", scripts("cameras"))
+    )]
     fn list_cameras_with_title_single_match(pool: PgPool) -> ApiResult<()> {
         // Arrange
         let q = requests::ListCamerasQuery {
@@ -26,7 +37,10 @@ mod repository {
         Ok(())
     }
 
-    #[sqlx::test(fixtures(path = "../fixtures", scripts("cameras")))]
+    #[sqlx::test(
+        migrator = "crate::support::MIGRATOR",
+        fixtures(path = "../fixtures", scripts("cameras"))
+    )]
     fn list_cameras_with_inactive_ok(pool: PgPool) -> ApiResult<()> {
         // Arrange
         let q = requests::ListCamerasQuery {
@@ -43,12 +57,15 @@ mod repository {
 
         // Assert
         assert_ne!(res.len(), 0);
-        assert!(res.iter().all(|c| c.is_active == false));
+        assert!(res.iter().all(|c| !c.is_active));
 
         Ok(())
     }
 
-    #[sqlx::test(fixtures(path = "../fixtures", scripts("cameras")))]
+    #[sqlx::test(
+        migrator = "crate::support::MIGRATOR",
+        fixtures(path = "../fixtures", scripts("cameras"))
+    )]
     fn list_cameras_with_bbox_ok(pool: PgPool) -> ApiResult<()> {
         // Arrange
         let q = requests::ListCamerasQuery {
@@ -72,7 +89,10 @@ mod repository {
         Ok(())
     }
 
-    #[sqlx::test(fixtures(path = "../fixtures", scripts("cameras")))]
+    #[sqlx::test(
+        migrator = "crate::support::MIGRATOR",
+        fixtures(path = "../fixtures", scripts("cameras"))
+    )]
     fn list_cameras_as_map_ok(pool: PgPool) -> ApiResult<()> {
         // Arrange
         let q = requests::ListCamerasQuery {
@@ -93,18 +113,21 @@ mod repository {
         Ok(())
     }
 
-    #[sqlx::test(fixtures(path = "../fixtures", scripts("cameras")))]
+    #[sqlx::test(
+        migrator = "crate::support::MIGRATOR",
+        fixtures(path = "../fixtures", scripts("cameras"))
+    )]
     fn create_camera_ok(pool: PgPool) -> ApiResult<()> {
         // Arrange
-            let q = requests::CreateCamera {
-                title: String::new(),
-                source: "popa".to_string(),
-                image_width: 1,
-                image_height: 1,
-                calib: None,
-                latitude: 0.,
-                longitude: 0.
-            };
+        let q = requests::CreateCamera {
+            title: String::new(),
+            source: "popa".to_string(),
+            image_width: 1,
+            image_height: 1,
+            calib: None,
+            latitude: 0.,
+            longitude: 0.,
+        };
         // Act
 
         let _ = repository::create_camera(&pool, q, None).await?;
@@ -113,7 +136,10 @@ mod repository {
         Ok(())
     }
 
-    #[sqlx::test(fixtures(path = "../fixtures", scripts("cameras")))]
+    #[sqlx::test(
+        migrator = "crate::support::MIGRATOR",
+        fixtures(path = "../fixtures", scripts("cameras"))
+    )]
     fn delete_camera_with_bad_id_returns_not_found(pool: PgPool) -> ApiResult<()> {
         // Arrange
 
@@ -127,7 +153,10 @@ mod repository {
         Ok(())
     }
 
-    #[sqlx::test(fixtures(path = "../fixtures", scripts("cameras")))]
+    #[sqlx::test(
+        migrator = "crate::support::MIGRATOR",
+        fixtures(path = "../fixtures", scripts("cameras"))
+    )]
     fn delete_camera_with_bad_scope_returns_not_found(pool: PgPool) -> ApiResult<()> {
         // Arrange
 
@@ -135,23 +164,26 @@ mod repository {
 
         // Act
         let res = repository::delete_camera(&pool, 7, scope).await?;
-        
+
         // Assert
         assert_eq!(res, 0);
         Ok(())
     }
 
-    #[sqlx::test(fixtures(path = "../fixtures", scripts("cameras")))]
+    #[sqlx::test(
+        migrator = "crate::support::MIGRATOR",
+        fixtures(path = "../fixtures", scripts("cameras"))
+    )]
     fn get_camera_with_bad_scope_returns_not_found(pool: PgPool) -> ApiResult<()> {
         // Arrange
 
         let scope = CameraAccess::Public;
 
         // Act
-        let res = repository::get_camera(&pool, 7, scope).await?;
-        
+        let res = repository::find_by_id(&pool, 7, scope).await?;
+
         // Assert
-        assert!(if let None = res {true} else {false});
+        assert_matches!(res, None);
         Ok(())
     }
 }

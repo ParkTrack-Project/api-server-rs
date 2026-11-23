@@ -8,10 +8,12 @@ pub struct ApiState {
     pub inner: Arc<ApiStateInner>,
 }
 
+#[derive(Clone)]
 pub struct ApiStateInner {
     pub config: ApiConfig,
     pub decoding_key: DecodingKey,
     pub pool: PgPool,
+    pub email_service: Arc<dyn crate::utils::smtp_service::EmailService>,
 }
 
 impl std::ops::Deref for ApiState {
@@ -36,11 +38,20 @@ impl ApiState {
             config,
             decoding_key,
             pool,
+            email_service: Arc::new(crate::utils::smtp_service::SmtpEmailService),
         };
 
         Self {
             inner: Arc::new(inner),
         }
+    }
+
+    pub fn with_email_service(
+        mut self,
+        email_service: Arc<dyn crate::utils::smtp_service::EmailService>,
+    ) -> Self {
+        Arc::make_mut(&mut self.inner).email_service = email_service;
+        self
     }
 
     pub async fn new(config: ApiConfig, decoding_key: DecodingKey, pool: PgPool) -> Self {
@@ -49,6 +60,7 @@ impl ApiState {
                 config,
                 decoding_key,
                 pool,
+                email_service: Arc::new(crate::utils::smtp_service::SmtpEmailService),
             }),
         }
     }
@@ -61,7 +73,7 @@ pub struct ApiConfig {
     pub database_url: String,
 
     pub jwt_secret: String,
-    pub jwt_expire_seconds: u32,
+    pub jwt_expire_seconds: u64,
 
     pub smtp_host: String,
     pub smtp_port: u32,
@@ -79,45 +91,43 @@ pub struct ApiConfig {
 
 impl ApiConfig {
     pub fn from_env() -> Self {
-        // TODO: find a proper way to manage env variables or remove loading from file
-        // dotenvy::dotenv().expect("Failed to load .env file");
+        // Existing environment variables take precedence over values from .env.
+        use dotenvy::var;
 
-        use std::env;
+        let api_token = var("API_TOKEN").expect("API_TOKEN must be set");
 
-        let api_token = env::var("API_TOKEN").expect("API_TOKEN must be set");
+        let database_url = var("DATABASE_URL").expect("DATABASE_URL must be set");
 
-        let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+        let jwt_secret = var("JWT_SECRET").expect("JWT_SECRET must be set");
 
-        let jwt_secret = env::var("JWT_SECRET").expect("JWT_SECRET must be set");
-
-        let jwt_expire_seconds: u32 = env::var("JWT_EXPIRE_SECONDS")
+        let jwt_expire_seconds: u64 = var("JWT_EXPIRE_SECONDS")
             .expect("JWT_EXPIRE_SECONDS must be set")
             .parse()
             .expect("JWT_EXPIRE_SECONDS must be positive integer");
 
-        let smtp_host = env::var("SMTP_HOST").expect("SMTP_HOST must be set");
-        let smtp_port: u32 = env::var("SMTP_PORT")
+        let smtp_host = var("SMTP_HOST").expect("SMTP_HOST must be set");
+        let smtp_port: u32 = var("SMTP_PORT")
             .expect("SMTP_PORT must be set")
             .parse()
             .expect("SMTP_PORT must be a legal port");
-        let smtp_username = env::var("SMTP_USERNAME").expect("SMTP_USERNAME must be set");
-        let smtp_password = env::var("SMTP_PASSWORD").expect("SMTP_PASSWORD must be set");
-        let smtp_from_email = env::var("SMTP_FROM_EMAIL").expect("SMTP_FROM_EMAIL must be set");
-        let smtp_from_name = env::var("SMTP_FROM_NAME").expect("SMTP_FROM_NAME must be set");
-        let smtp_use_tls: bool = env::var("SMTP_USE_TLS")
+        let smtp_username = var("SMTP_USERNAME").expect("SMTP_USERNAME must be set");
+        let smtp_password = var("SMTP_PASSWORD").expect("SMTP_PASSWORD must be set");
+        let smtp_from_email = var("SMTP_FROM_EMAIL").expect("SMTP_FROM_EMAIL must be set");
+        let smtp_from_name = var("SMTP_FROM_NAME").expect("SMTP_FROM_NAME must be set");
+        let smtp_use_tls: bool = var("SMTP_USE_TLS")
             .unwrap_or("1".to_string())
             .parse()
             .expect("SMTP_USE_TLS must be a boolean");
-        let smtp_use_ssl: bool = env::var("SMTP_USE_SSL")
+        let smtp_use_ssl: bool = var("SMTP_USE_SSL")
             .unwrap_or("0".to_string())
             .parse()
             .expect("SMTP_USE_SSL must be a boolean");
-        let password_reset_login_url = env::var("PASSWORD_RESET_LOGIN_URL").unwrap_or_default();
-        let password_reset_ttl_minutes: u32 = env::var("PASSWORD_TTL_RESET_MINUTES")
+        let password_reset_login_url = var("PASSWORD_RESET_LOGIN_URL").unwrap_or_default();
+        let password_reset_ttl_minutes: u32 = var("PASSWORD_TTL_RESET_MINUTES")
             .expect("PASSWORD_TTL_RESET_MINUTES must be set")
             .parse()
             .expect("PASSWORD_TTL_RESET_MINUTES must be positive integer");
-        let password_reset_return_token: bool = env::var("PASSWORD_RESET_RETURN_TOKEN")
+        let password_reset_return_token: bool = var("PASSWORD_RESET_RETURN_TOKEN")
             .unwrap_or("0".to_string())
             .parse()
             .expect("SMTP_USE_SSL must be a boolean");
