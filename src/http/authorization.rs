@@ -199,6 +199,25 @@ pub struct PartnerContext {
     is_admin: bool,
 }
 impl PartnerContext {
+    pub fn resource_scope(
+        &self,
+        operation: crate::http::permissions::ScopeType,
+    ) -> ApiResult<Scope> {
+        if self.is_admin {
+            return Ok(Scope::PartnerAll);
+        }
+        let membership = self.membership.as_ref().ok_or(ApiError::AccessDenied)?;
+        let value = match operation {
+            crate::http::permissions::ScopeType::View => &membership.read_scope,
+            crate::http::permissions::ScopeType::Write => &membership.write_scope,
+            crate::http::permissions::ScopeType::Delete => &membership.delete_scope,
+        };
+        match value.parse::<Scope>() {
+            Ok(Scope::Own) => Ok(Scope::Own),
+            Ok(Scope::PartnerAll) => Ok(Scope::PartnerAll),
+            _ => Err(ApiError::AccessDenied),
+        }
+    }
     pub fn scope(&self) -> crate::partners::member_repository::MemberAccess {
         crate::partners::member_repository::MemberAccess::Partner {
             partner_id: self.partner_id,
@@ -229,9 +248,11 @@ impl FromRequestParts<ApiState> for PartnerContext {
             axum::extract::Path::<PartnerId>::from_request_parts(parts, state)
                 .await
                 .map_err(|_| ApiError::BadRequest("invalid partner id".into()))?;
+
         if path.partner_id <= 0 {
             return Err(ApiError::BadRequest("invalid partner id".into()));
         }
+
         let PublicAuthenticated::User {
             user_id,
             global_role,
@@ -239,7 +260,15 @@ impl FromRequestParts<ApiState> for PartnerContext {
         else {
             return Err(ApiError::Unauthenticated);
         };
+
         if global_role == GlobalRole::Admin {
+            crate::partners::repository::find(
+                &state.pool,
+                path.partner_id,
+                crate::partners::repository::PartnerAccess::All,
+            )
+            .await?
+            .ok_or_else(|| ApiError::NotFound("partner".into()))?;
             return Ok(Self {
                 user_id,
                 partner_id: path.partner_id,
@@ -250,7 +279,7 @@ impl FromRequestParts<ApiState> for PartnerContext {
         }
         let membership = repository::active_identity(&state.pool, path.partner_id, user_id)
             .await?
-            .ok_or(ApiError::Forbidden(Permission::PartnerMembersView))?;
+            .ok_or(ApiError::AccessDenied)?;
         let scope = repository::MemberAccess::Partner {
             partner_id: path.partner_id,
         };

@@ -44,6 +44,9 @@ pub enum ApiError {
     #[error("missing permission: {0}")]
     Forbidden(Permission),
 
+    #[error("access denied")]
+    AccessDenied,
+
     // 400
     #[error(transparent)]
     ValidationError(#[from] ValidationErrors),
@@ -67,7 +70,7 @@ impl IntoResponse for ApiError {
             | ApiError::InvalidCredentials
             | ApiError::TokenExpired
             | ApiError::InvalidToken => StatusCode::UNAUTHORIZED,
-            ApiError::Forbidden(_) => StatusCode::FORBIDDEN,
+            ApiError::Forbidden(_) | ApiError::AccessDenied => StatusCode::FORBIDDEN,
             ApiError::ValidationError(_) => StatusCode::BAD_REQUEST,
             ApiError::InternalError(_) => StatusCode::INTERNAL_SERVER_ERROR,
             ApiError::Conflict(_) => StatusCode::CONFLICT,

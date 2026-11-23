@@ -57,7 +57,17 @@ pub async fn create_camera(
         PublicAuthenticated::ApiToken => None,
     };
 
-    let result = repository::create_camera(&state.pool, payload, user_id)
+    create_camera_with_scope(state, payload, user_id, None).await
+}
+
+#[tracing::instrument(skip(state), err)]
+pub(crate) async fn create_camera_with_scope(
+    state: &ApiState,
+    payload: requests::CreateCamera,
+    user_id: Option<i32>,
+    partner_id: Option<i32>,
+) -> ApiResult<responses::CreateCamera> {
+    let result = repository::create_camera_with_partner(&state.pool, payload, user_id, partner_id)
         .await
         .map(responses::CreateCamera::from)?;
 
@@ -72,14 +82,19 @@ pub async fn get_camera(
     current_user: &PublicAuthenticated,
     query: requests::CameraId,
 ) -> ApiResult<responses::Camera> {
-    let result = repository::find_by_id(
-        &state.pool,
-        query.camera_id,
-        public_scope(current_user, ScopeType::View),
-    )
-    .await?
-    .ok_or_else(|| ApiError::NotFound(format!("camera of id {} not found", query.camera_id)))
-    .map(responses::Camera::from)?;
+    get_camera_with_scope(state, query, public_scope(current_user, ScopeType::View)).await
+}
+
+#[tracing::instrument(skip(state), err)]
+pub(crate) async fn get_camera_with_scope(
+    state: &ApiState,
+    query: requests::CameraId,
+    scope: CameraAccess,
+) -> ApiResult<responses::Camera> {
+    let result = repository::find_by_id(&state.pool, query.camera_id, scope)
+        .await?
+        .ok_or_else(|| ApiError::NotFound(format!("camera of id {} not found", query.camera_id)))
+        .map(responses::Camera::from)?;
 
     Ok(result)
 }
@@ -91,21 +106,32 @@ pub async fn update_camera(
     query: requests::CameraId,
     payload: requests::UpdateCamera,
 ) -> ApiResult<responses::Camera> {
-    if payload.is_empty() {
-        return Err(ApiError::BadRequest("missing body".to_string()));
-    }
-
-    let result = repository::update_camera(
-        &state.pool,
-        query.camera_id,
+    update_camera_with_scope(
+        state,
+        query,
         payload,
         public_scope(current_user, ScopeType::Write),
     )
     .await
-    .and_then(|res| {
-        res.ok_or_else(|| ApiError::NotFound(format!("camera with id {}", query.camera_id)))
-    })
-    .map(responses::Camera::from)?;
+}
+
+#[tracing::instrument(skip(state), err)]
+pub(crate) async fn update_camera_with_scope(
+    state: &ApiState,
+    query: requests::CameraId,
+    payload: requests::UpdateCamera,
+    scope: CameraAccess,
+) -> ApiResult<responses::Camera> {
+    if payload.is_empty() {
+        return Err(ApiError::BadRequest("missing body".to_string()));
+    }
+
+    let result = repository::update_camera(&state.pool, query.camera_id, payload, scope)
+        .await
+        .and_then(|res| {
+            res.ok_or_else(|| ApiError::NotFound(format!("camera with id {}", query.camera_id)))
+        })
+        .map(responses::Camera::from)?;
 
     tracing::info!(camera_id = query.camera_id, "camera updated");
 
@@ -118,12 +144,16 @@ pub async fn delete_camera(
     current_user: &PublicAuthenticated,
     query: requests::CameraId,
 ) -> ApiResult<()> {
-    let rows_affected = repository::delete_camera(
-        &state.pool,
-        query.camera_id,
-        public_scope(current_user, ScopeType::Delete),
-    )
-    .await?;
+    delete_camera_with_scope(state, query, public_scope(current_user, ScopeType::Delete)).await
+}
+
+#[tracing::instrument(skip(state), err)]
+pub(crate) async fn delete_camera_with_scope(
+    state: &ApiState,
+    query: requests::CameraId,
+    scope: CameraAccess,
+) -> ApiResult<()> {
+    let rows_affected = repository::delete_camera(&state.pool, query.camera_id, scope).await?;
 
     if rows_affected == 0 {
         return Err(ApiError::NotFound(format!(
@@ -137,18 +167,8 @@ pub async fn delete_camera(
     Ok(())
 }
 
-// pub async fn list_partner_cameras(
-//     state: &ApiState,
-//     current_user: &PartnerAuthenticated,
-//     partner_id: u32,
-//     query: &ListCamerasQuery,
-// ) -> ApiResult<ListCamerasResponse> {
-//     current_user.require(&[Permission::CamerasView])?;
-
-//     list_cameras_with_scope(state, query, partner_scope(current_user, partner_id)?).await
-// }
-
-async fn list_cameras_with_scope(
+#[tracing::instrument(skip(state), err)]
+pub(crate) async fn list_cameras_with_scope(
     state: &ApiState,
     query: requests::ListCamerasQuery,
     scope: CameraAccess,
@@ -191,25 +211,3 @@ fn public_scope(current_user: &PublicAuthenticated, scope: ScopeType) -> CameraA
         | PublicAuthenticated::ApiToken => CameraAccess::All,
     }
 }
-
-// fn partner_scope(current_user: &PartnerAuthenticated, partner_id: i32) -> ApiResult<CameraAccess> {
-//     let scope = match current_user {
-//         PartnerAuthenticated::Admin { .. } => CameraAccess::Partner { partner_id },
-//         PartnerAuthenticated::Member {
-//             user_id,
-//             view_scope: Scope::Own,
-//             ..
-//         } => {
-//             CameraAccess::PartnerOwned {
-//                 partner_id,
-//                 user_id: *user_id,
-//             }
-//         }
-//         PartnerAuthenticated::Member {
-//             view_scope: Scope::PartnerAll,
-//             ..
-//         } => CameraAccess::Partner { partner_id },
-//     };
-
-//     Ok(scope)
-// }

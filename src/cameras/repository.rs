@@ -90,6 +90,15 @@ pub async fn create_camera(
     query: requests::CreateCamera,
     user_id: Option<i32>,
 ) -> ApiResult<CreateCameraRow> {
+    create_camera_with_partner(pool, query, user_id, None).await
+}
+
+pub async fn create_camera_with_partner(
+    pool: impl PgExecutor<'_>,
+    query: requests::CreateCamera,
+    user_id: Option<i32>,
+    partner_id: Option<i32>,
+) -> ApiResult<CreateCameraRow> {
     let (sql, values) = sea_query::Query::insert()
         .into_table(Cameras::Table)
         .columns([
@@ -101,6 +110,7 @@ pub async fn create_camera(
             Cameras::Latitude,
             Cameras::Longitude,
             Cameras::CreatedByUserId,
+            Cameras::PartnerId,
         ])
         .values_panic([
             query.title.clone().into(),
@@ -111,6 +121,7 @@ pub async fn create_camera(
             query.latitude.into(),
             query.longitude.into(),
             user_id.into(),
+            partner_id.into(),
         ])
         .returning_col(Cameras::CameraId)
         .build_sqlx(PostgresQueryBuilder);
@@ -139,6 +150,7 @@ pub async fn find_by_id(
 ) -> ApiResult<Option<CameraRow>> {
     let (sql, values) = sea_query::Query::select()
         .from(Cameras::Table)
+        .columns(CAMERA_COLUMNS)
         .cond_where(scope_condition(scope))
         .and_where(Expr::col(Cameras::CameraId).eq(camera_id))
         .build_sqlx(PostgresQueryBuilder);
@@ -228,7 +240,7 @@ fn base_list_query(
         .to_owned()
 }
 
-fn scope_condition(scope: CameraAccess) -> sea_query::Condition {
+pub(crate) fn scope_condition(scope: CameraAccess) -> sea_query::Condition {
     let condition = sea_query::Condition::all();
 
     match scope {

@@ -165,15 +165,13 @@ pub async fn find(
 pub async fn camera_partner(
     pool: impl PgExecutor<'_>,
     id: i32,
-    public_only: bool,
+    scope: crate::cameras::repository::CameraAccess,
 ) -> ApiResult<Option<Option<i32>>> {
     let mut q = Query::select();
     q.column(Cameras::PartnerId)
         .from(Cameras::Table)
         .and_where(Expr::col(Cameras::CameraId).eq(id));
-    if public_only {
-        q.and_where(Expr::col(Cameras::PartnerId).is_null());
-    }
+    q.cond_where(crate::cameras::repository::scope_condition(scope));
     let (sql, values) = q.build_sqlx(PostgresQueryBuilder);
     sqlx::query_scalar_with(sqlx::AssertSqlSafe(sql), values)
         .fetch_optional(pool)
