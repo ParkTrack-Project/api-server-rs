@@ -58,7 +58,7 @@ pub async fn create_user(
             if let sqlx::Error::Database(db_err) = &e
                 && db_err.is_unique_violation()
             {
-                return ApiError::Conflict("user already exists".to_string());
+                return ApiError::Conflict(format!("email {} is already taken", query.email));
             }
 
             ApiError::InternalError(

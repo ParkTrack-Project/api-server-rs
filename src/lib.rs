@@ -1,7 +1,7 @@
 use axum::Router;
 
 use crate::{
-    features::{auth, cameras, partners, zones},
+    features::{auth, cameras, partners, users, zones},
     state::ApiState,
 };
 
@@ -21,6 +21,7 @@ pub fn create_routes() -> Router<ApiState> {
             .nest("/cameras", cameras::camera_routes())
             .nest("/zones", zones::zone_routes())
             .nest("/partners", partners::partner_routes())
+            .nest("/users", users::user_routes())
             .merge(http::system_routes()),
     )
 }

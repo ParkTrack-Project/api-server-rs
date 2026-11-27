@@ -1,3 +1,4 @@
+use axum::{Json, response::IntoResponse};
 use chrono::NaiveDateTime;
 use serde::Serialize;
 
@@ -12,16 +13,36 @@ pub struct Partner {
     pub created_at: Option<NaiveDateTime>,
     pub updated_at: Option<NaiveDateTime>,
 }
+
+impl IntoResponse for Partner {
+    fn into_response(self) -> axum::response::Response {
+        Json(self).into_response()
+    }
+}
+
 #[derive(Debug, Serialize)]
 pub struct Created {
     pub partner_id: i32,
 }
+
+impl IntoResponse for Created {
+    fn into_response(self) -> axum::response::Response {
+        Json(self).into_response()
+    }
+}
+
 #[derive(Debug, Serialize)]
 pub struct Page<T> {
     pub items: Vec<T>,
     pub total: i64,
     pub top: u64,
     pub offset: u64,
+}
+
+impl<T: Serialize> IntoResponse for Page<T> {
+    fn into_response(self) -> axum::response::Response {
+        Json(self).into_response()
+    }
 }
 
 impl From<super::models::PartnerRow> for Partner {
@@ -50,6 +71,12 @@ pub struct Member {
     pub delete_scope: String,
     pub is_active: bool,
     pub created_at: Option<NaiveDateTime>,
+}
+
+impl IntoResponse for Member {
+    fn into_response(self) -> axum::response::Response {
+        Json(self).into_response()
+    }
 }
 impl Member {
     pub fn from_row(row: super::models::MemberRow, permissions: Vec<String>) -> Self {

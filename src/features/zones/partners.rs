@@ -33,10 +33,10 @@ pub async fn list(
     current_user: PartnerContext,
     State(state): State<ApiState>,
     Valid(Query(input)): Valid<Query<requests::ListZones>>,
-) -> ApiResult<Json<responses::ListZones>> {
+) -> ApiResult<responses::ListZones> {
     current_user.require(Permission::ZonesView)?;
     let scope = access(&current_user, ScopeType::View)?;
-    Ok(Json(service::list_with_scope(&state, input, scope).await?))
+    service::list_with_scope(&state, input, scope).await
 }
 
 #[debug_handler]
@@ -44,12 +44,10 @@ pub async fn get_one(
     current_user: PartnerContext,
     State(state): State<ApiState>,
     Valid(Path(id)): Valid<Path<requests::ZoneId>>,
-) -> ApiResult<Json<responses::Zone>> {
+) -> ApiResult<responses::Zone> {
     current_user.require(Permission::ZonesView)?;
     let scope = access(&current_user, ScopeType::View)?;
-    Ok(Json(
-        service::get_with_scope(&state, id.zone_id, scope).await?,
-    ))
+    service::get_with_scope(&state, id.zone_id, scope).await
 }
 
 #[debug_handler]
@@ -57,22 +55,20 @@ pub async fn create(
     current_user: PartnerContext,
     State(state): State<ApiState>,
     Valid(Json(input)): Valid<Json<requests::CreateZone>>,
-) -> ApiResult<(StatusCode, Json<responses::Created>)> {
+) -> ApiResult<(StatusCode, responses::Created)> {
     current_user.require(Permission::ZonesWrite)?;
     access(&current_user, ScopeType::Write)?;
     Ok((
         StatusCode::CREATED,
-        Json(
-            service::create_with_scope(
-                &state,
-                input,
-                Some(current_user.user_id),
-                crate::features::cameras::repository::CameraAccess::Partner {
-                    partner_id: current_user.partner_id,
-                },
-            )
-            .await?,
-        ),
+        service::create_with_scope(
+            &state,
+            input,
+            Some(current_user.user_id),
+            crate::features::cameras::repository::CameraAccess::Partner {
+                partner_id: current_user.partner_id,
+            },
+        )
+        .await?,
     ))
 }
 
@@ -82,21 +78,19 @@ pub async fn update(
     State(state): State<ApiState>,
     Valid(Path(id)): Valid<Path<requests::ZoneId>>,
     Valid(Json(input)): Valid<Json<requests::UpdateZone>>,
-) -> ApiResult<Json<responses::Zone>> {
+) -> ApiResult<responses::Zone> {
     current_user.require(Permission::ZonesWrite)?;
     let scope = access(&current_user, ScopeType::Write)?;
-    Ok(Json(
-        service::update_with_scope(
-            &state,
-            id.zone_id,
-            input,
-            scope,
-            crate::features::cameras::repository::CameraAccess::Partner {
-                partner_id: current_user.partner_id,
-            },
-        )
-        .await?,
-    ))
+    service::update_with_scope(
+        &state,
+        id.zone_id,
+        input,
+        scope,
+        crate::features::cameras::repository::CameraAccess::Partner {
+            partner_id: current_user.partner_id,
+        },
+    )
+    .await
 }
 
 #[debug_handler]
