@@ -1,6 +1,7 @@
-use crate::{error::ApiResult, state::ApiState};
-
-use crate::types::validate_observation_interval;
+use crate::{
+    error::{ApiError, ApiResult},
+    state::ApiState,
+};
 
 use super::{repository, requests, responses};
 
@@ -8,15 +9,34 @@ use super::{repository, requests, responses};
 pub async fn list_weather(
     state: &ApiState,
     query: requests::ListWeather,
-) -> ApiResult<Vec<responses::WeatherObservation>> {
-    validate_observation_interval(query.from, query.to)?;
-    repository::list_weather(&state.pool, query).await
+) -> ApiResult<responses::ListWeather> {
+    repository::list_weather(&state.pool, query)
+        .await
+        .map(responses::ListWeather)
 }
 
 #[tracing::instrument(skip(state), err)]
-pub async fn save_weather(
+pub async fn get_weather(
     state: &ApiState,
-    input: requests::SaveWeather,
+    key: requests::WeatherKey,
 ) -> ApiResult<responses::WeatherObservation> {
-    repository::save_weather(&state.pool, input).await
+    repository::find_weather(&state.pool, &key)
+        .await?
+        .ok_or_else(|| ApiError::NotFound("weather observation".into()))
+}
+
+#[tracing::instrument(skip(state), err)]
+pub async fn upsert_weather(
+    state: &ApiState,
+    key: requests::WeatherKey,
+    input: requests::UpsertWeather,
+) -> ApiResult<(responses::WeatherKey, bool)> {
+    let inserted = repository::upsert_weather(&state.pool, &key, input).await?;
+    Ok((
+        responses::WeatherKey {
+            camera_id: key.camera_id,
+            observed_at: key.observed_at,
+        },
+        inserted,
+    ))
 }

@@ -715,9 +715,8 @@ async fn detector_observations_and_ml_data_are_persisted(pool: PgPool) {
         "source_ref": "observation-1",
         "observed_at": "2026-11-27T12:00:00Z"
     });
+    let weather_path = "/weather/7/2026-11-27T12:00:00Z";
     let weather = json!({
-        "camera_id": 7,
-        "observed_at": "2026-11-27T12:00:00Z",
         "temperature": 1.5,
         "precipitation": 0.0
     });
@@ -762,14 +761,6 @@ async fn detector_observations_and_ml_data_are_persisted(pool: PgPool) {
             StatusCode::CONFLICT,
         ),
         (
-            "/weather/new",
-            weather.clone(),
-            DETECTOR,
-            StatusCode::FORBIDDEN,
-        ),
-        ("/weather/new", weather, PREDICTION, StatusCode::OK),
-        ("/weather/new", updated_weather, PREDICTION, StatusCode::OK),
-        (
             "/forecasts/new",
             forecast.clone(),
             DETECTOR,
@@ -787,6 +778,15 @@ async fn detector_observations_and_ml_data_are_persisted(pool: PgPool) {
     for (path, payload, token, expected) in write_cases {
         let (status, body) = request_with_bearer(&app, "POST", path, payload, Some(token)).await;
         assert_eq!(status, expected, "POST {path}: {body}");
+    }
+    for (payload, token, expected) in [
+        (weather.clone(), DETECTOR, StatusCode::FORBIDDEN),
+        (weather, PREDICTION, StatusCode::CREATED),
+        (updated_weather, PREDICTION, StatusCode::OK),
+    ] {
+        let (status, body) =
+            request_with_bearer(&app, "PUT", weather_path, payload, Some(token)).await;
+        assert_eq!(status, expected, "PUT {weather_path}: {body}");
     }
 
     let history_url = format!("/occupancy?zone_id={zone_id}&camera_id=7&top=1");
