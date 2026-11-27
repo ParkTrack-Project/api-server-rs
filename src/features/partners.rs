@@ -25,11 +25,14 @@ pub fn partner_routes() -> Router<ApiState> {
                 .put(handlers::update_member)
                 .delete(handlers::disable_member),
         )
-        .route("/", get(handlers::list).post(handlers::create))
+        .route(
+            "/",
+            get(handlers::list_partners).post(handlers::create_partner),
+        )
         .route(
             "/{partner_id}",
-            get(handlers::get)
-                .put(handlers::update)
-                .delete(handlers::disable),
+            get(handlers::get_partner)
+                .put(handlers::update_partner)
+                .delete(handlers::disable_partner),
         )
 }

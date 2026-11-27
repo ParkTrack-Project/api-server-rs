@@ -16,9 +16,13 @@ use serde_json::{Value, json};
 use sqlx::{ConnectOptions, PgPool};
 use tower::ServiceExt;
 const SECRET: &str = "zones-test-key";
+const DETECTOR: &str = "test-car-detector-token";
+const PREDICTION: &str = "test-ml-prediction-token";
+
 async fn app(pool: PgPool) -> Router {
     let config = ApiConfig {
-        api_token: "test-api-token".into(),
+        car_detector_token: DETECTOR.into(),
+        ml_prediction_token: PREDICTION.into(),
         database_url: pool.connect_options().to_url_lossy().to_string(),
         jwt_secret: SECRET.into(),
         jwt_expire_seconds: 3600,
@@ -45,16 +49,33 @@ async fn request(
     payload: Value,
     role: Option<GlobalRole>,
 ) -> (StatusCode, Value) {
+    let token = role.map(|role| {
+        let id = if role == GlobalRole::Admin { 102 } else { 101 };
+        create_access_token(id, 3600, role, SECRET)
+    });
+    request_with_bearer(
+        app,
+        method,
+        &format!("/zones{path}"),
+        payload,
+        token.as_deref(),
+    )
+    .await
+}
+
+async fn request_with_bearer(
+    app: &Router,
+    method: &str,
+    path: &str,
+    payload: Value,
+    bearer: Option<&str>,
+) -> (StatusCode, Value) {
     let mut r = Request::builder()
         .method(method)
-        .uri(format!("/api/v3/zones{path}"))
+        .uri(format!("/api/v3{path}"))
         .header("content-type", "application/json");
-    if let Some(role) = role {
-        let id = if role == GlobalRole::Admin { 102 } else { 101 };
-        r = r.header(
-            "authorization",
-            format!("Bearer {}", create_access_token(id, 3600, role, SECRET)),
-        );
+    if let Some(token) = bearer {
+        r = r.header("authorization", format!("Bearer {token}"));
     }
     let response = app
         .clone()
@@ -496,4 +517,300 @@ async fn concurrent_updates_preserve_capacity_invariant(pool: PgPool) {
     assert!([first.0, second.0].contains(&StatusCode::BAD_REQUEST));
     assert!([first.0, second.0].contains(&StatusCode::OK));
     assert!(zone["occupied"].as_i64().unwrap() <= zone["capacity"].as_i64().unwrap());
+}
+
+#[sqlx::test(
+    migrator = "crate::support::MIGRATOR",
+    fixtures(path = "../fixtures", scripts("zones"))
+)]
+async fn service_tokens_are_limited_to_their_routes(pool: PgPool) {
+    // Arrange
+    let app = app(pool).await;
+    let zone_id = create(&app, 7).await;
+    let zone_path = format!("/zones/{zone_id}");
+    let admin = create_access_token(102, 3600, GlobalRole::Admin, SECRET);
+    let user = create_access_token(101, 3600, GlobalRole::User, SECRET);
+    let cases = [
+        (
+            "GET",
+            "/cameras/next",
+            json!(null),
+            DETECTOR,
+            StatusCode::OK,
+        ),
+        (
+            "GET",
+            "/cameras/next",
+            json!(null),
+            PREDICTION,
+            StatusCode::FORBIDDEN,
+        ),
+        (
+            "GET",
+            "/cameras/next",
+            json!(null),
+            &admin,
+            StatusCode::UNAUTHORIZED,
+        ),
+        ("GET", "/cameras", json!(null), PREDICTION, StatusCode::OK),
+        (
+            "GET",
+            "/cameras",
+            json!(null),
+            DETECTOR,
+            StatusCode::FORBIDDEN,
+        ),
+        (
+            "GET",
+            "/cameras",
+            json!(null),
+            "legacy-api-token",
+            StatusCode::UNAUTHORIZED,
+        ),
+        (
+            "GET",
+            "/cameras/7",
+            json!(null),
+            PREDICTION,
+            StatusCode::UNAUTHORIZED,
+        ),
+        (
+            "GET",
+            "/zones?camera_id=7",
+            json!(null),
+            DETECTOR,
+            StatusCode::OK,
+        ),
+        ("GET", "/zones", json!(null), DETECTOR, StatusCode::OK),
+        ("GET", "/zones", json!(null), PREDICTION, StatusCode::OK),
+        ("GET", "/zones", json!(null), &user, StatusCode::OK),
+        (
+            "GET",
+            &zone_path,
+            json!(null),
+            DETECTOR,
+            StatusCode::UNAUTHORIZED,
+        ),
+        (
+            "PUT",
+            &zone_path,
+            json!({"occupied": 2, "confidence": 0.8}),
+            DETECTOR,
+            StatusCode::OK,
+        ),
+        (
+            "PUT",
+            &zone_path,
+            json!({"occupied": 3, "capacity": 20}),
+            DETECTOR,
+            StatusCode::FORBIDDEN,
+        ),
+        (
+            "PUT",
+            &zone_path,
+            json!({"occupied": 3}),
+            PREDICTION,
+            StatusCode::FORBIDDEN,
+        ),
+        (
+            "PUT",
+            &zone_path,
+            json!({"occupied": 3}),
+            &user,
+            StatusCode::FORBIDDEN,
+        ),
+        (
+            "POST",
+            "/zones/new",
+            payload(7),
+            DETECTOR,
+            StatusCode::UNAUTHORIZED,
+        ),
+        (
+            "DELETE",
+            &zone_path,
+            json!(null),
+            DETECTOR,
+            StatusCode::UNAUTHORIZED,
+        ),
+        (
+            "GET",
+            "/users/me",
+            json!(null),
+            DETECTOR,
+            StatusCode::UNAUTHORIZED,
+        ),
+        (
+            "GET",
+            "/partners/1/zones",
+            json!(null),
+            PREDICTION,
+            StatusCode::UNAUTHORIZED,
+        ),
+        (
+            "GET",
+            "/occupancy",
+            json!(null),
+            DETECTOR,
+            StatusCode::FORBIDDEN,
+        ),
+        (
+            "GET",
+            "/occupancy",
+            json!(null),
+            &admin,
+            StatusCode::UNAUTHORIZED,
+        ),
+        (
+            "GET",
+            "/weather",
+            json!(null),
+            DETECTOR,
+            StatusCode::FORBIDDEN,
+        ),
+    ];
+
+    for (method, path, payload, token, expected) in cases {
+        // Act
+        let (status, body) = request_with_bearer(&app, method, path, payload, Some(token)).await;
+
+        // Assert
+        assert_eq!(status, expected, "{method} {path}: {body}");
+    }
+
+    // Act
+    let (_, zone) = request_with_bearer(&app, "GET", &zone_path, Value::Null, Some(&admin)).await;
+
+    // Assert
+    assert_eq!(zone["occupied"], 2);
+    assert_eq!(zone["capacity"], 10);
+    assert_eq!(zone["confidence"], 0.8);
+
+    let mut camera_ids = Vec::new();
+    for _ in 0..3 {
+        // Act
+        let (status, camera) =
+            request_with_bearer(&app, "GET", "/cameras/next", Value::Null, Some(DETECTOR)).await;
+
+        // Assert
+        assert_eq!(status, StatusCode::OK, "{camera}");
+        camera_ids.push(camera["camera_id"].as_i64().unwrap());
+    }
+    assert_eq!(camera_ids, [7, 1, 7]);
+}
+
+#[sqlx::test(
+    migrator = "crate::support::MIGRATOR",
+    fixtures(path = "../fixtures", scripts("zones"))
+)]
+async fn detector_observations_and_ml_data_are_persisted(pool: PgPool) {
+    // Arrange
+    let app = app(pool).await;
+    let zone_id = create(&app, 7).await;
+    let observation = json!({
+        "zone_id": zone_id,
+        "occupied": 4,
+        "confidence": 0.9,
+        "confidence_level": "very_low",
+        "source_ref": "observation-1",
+        "observed_at": "2026-11-27T12:00:00Z"
+    });
+    let weather = json!({
+        "camera_id": 7,
+        "observed_at": "2026-11-27T12:00:00Z",
+        "temperature": 1.5,
+        "precipitation": 0.0
+    });
+    let forecast = json!({
+        "zone_id": zone_id,
+        "model_type": "example",
+        "generated_at": "2026-11-27T12:00:00Z",
+        "predicted_for": "2026-11-27T13:00:00Z",
+        "predicted_occupied": 4,
+        "probability_free_space": 0.75,
+        "confidence": 0.9
+    });
+
+    // Act
+    let mut over_capacity = observation.clone();
+    over_capacity["occupied"] = json!(11);
+    let mut updated_weather = weather.clone();
+    updated_weather["temperature"] = json!(2.5);
+    let write_cases = [
+        (
+            "/occupancy/new",
+            over_capacity,
+            DETECTOR,
+            StatusCode::BAD_REQUEST,
+        ),
+        (
+            "/occupancy/new",
+            observation.clone(),
+            PREDICTION,
+            StatusCode::FORBIDDEN,
+        ),
+        (
+            "/occupancy/new",
+            observation.clone(),
+            DETECTOR,
+            StatusCode::CREATED,
+        ),
+        (
+            "/occupancy/new",
+            observation,
+            DETECTOR,
+            StatusCode::CONFLICT,
+        ),
+        (
+            "/weather/new",
+            weather.clone(),
+            DETECTOR,
+            StatusCode::FORBIDDEN,
+        ),
+        ("/weather/new", weather, PREDICTION, StatusCode::OK),
+        ("/weather/new", updated_weather, PREDICTION, StatusCode::OK),
+        (
+            "/forecasts/new",
+            forecast.clone(),
+            DETECTOR,
+            StatusCode::FORBIDDEN,
+        ),
+        (
+            "/forecasts/new",
+            forecast.clone(),
+            PREDICTION,
+            StatusCode::CREATED,
+        ),
+        ("/forecasts/new", forecast, PREDICTION, StatusCode::CONFLICT),
+    ];
+
+    for (path, payload, token, expected) in write_cases {
+        let (status, body) = request_with_bearer(&app, "POST", path, payload, Some(token)).await;
+        assert_eq!(status, expected, "POST {path}: {body}");
+    }
+
+    let history_url = format!("/occupancy?zone_id={zone_id}&camera_id=7&top=1");
+    let (history_status, history) =
+        request_with_bearer(&app, "GET", &history_url, Value::Null, Some(PREDICTION)).await;
+    let (weather_status, weather_rows) = request_with_bearer(
+        &app,
+        "GET",
+        "/weather?camera_id=7&from=2026-11-27T12%3A00%3A00Z",
+        Value::Null,
+        Some(PREDICTION),
+    )
+    .await;
+
+    // Assert
+    assert_eq!(history_status, StatusCode::OK, "{history}");
+    assert_eq!(history.as_array().unwrap().len(), 1);
+    assert_eq!(history[0]["camera_id"], 7);
+    assert_eq!(history[0]["partner_id"], 1);
+    assert_eq!(history[0]["source_type"], "car-detector");
+    assert_eq!(history[0]["confidence_level"], "very_low");
+    assert_eq!(history[0]["free_count"], 6);
+
+    assert_eq!(weather_status, StatusCode::OK, "{weather_rows}");
+    assert_eq!(weather_rows.as_array().unwrap().len(), 1);
+    assert_eq!(weather_rows[0]["temperature"], 2.5);
 }

@@ -2,7 +2,7 @@ use super::{requests, responses, service};
 use crate::{
     error::ApiResult,
     http::{
-        authorization::{Authenticated, AuthenticatedUserOrAdmin, PublicAuthenticated},
+        authorization::{Authenticated, AuthenticatedUser, PartnerContext},
         permissions::{GlobalRole, Permission},
     },
     state::ApiState,
@@ -15,46 +15,37 @@ use axum::{
 use axum_macros::debug_handler;
 use axum_valid::Valid;
 
+// GET /partners
 #[debug_handler]
-pub async fn list(
-    AuthenticatedUserOrAdmin(current_user): AuthenticatedUserOrAdmin,
+pub async fn list_partners(
+    AuthenticatedUser(current_user): AuthenticatedUser,
     State(state): State<ApiState>,
     Valid(Query(input)): Valid<Query<requests::ListPartners>>,
 ) -> ApiResult<responses::Page<responses::Partner>> {
-    if matches!(
-        current_user,
-        PublicAuthenticated::User {
-            global_role: GlobalRole::Admin,
-            ..
-        }
-    ) {
+    if current_user.global_role == GlobalRole::Admin {
         current_user.require(Permission::AdminPartnersView)?;
     }
     service::list(&state, &current_user, input).await
 }
 
+// GET /partners/{partner_id}
 #[debug_handler]
-pub async fn get(
-    AuthenticatedUserOrAdmin(current_user): AuthenticatedUserOrAdmin,
+pub async fn get_partner(
+    AuthenticatedUser(current_user): AuthenticatedUser,
     State(state): State<ApiState>,
     Valid(Path(id)): Valid<Path<requests::PartnerId>>,
 ) -> ApiResult<responses::Partner> {
-    if matches!(
-        current_user,
-        PublicAuthenticated::User {
-            global_role: GlobalRole::Admin,
-            ..
-        }
-    ) {
+    if current_user.global_role == GlobalRole::Admin {
         current_user.require(Permission::AdminPartnersView)?;
     }
-    
+
     service::get(&state, &current_user, id.partner_id).await
 }
 
+// POST /partners
 #[debug_handler]
-pub async fn create(
-    AuthenticatedUserOrAdmin(current_user): AuthenticatedUserOrAdmin,
+pub async fn create_partner(
+    AuthenticatedUser(current_user): AuthenticatedUser,
     State(state): State<ApiState>,
     Valid(Json(input)): Valid<Json<requests::CreatePartner>>,
 ) -> ApiResult<(StatusCode, responses::Created)> {
@@ -62,9 +53,10 @@ pub async fn create(
     Ok((StatusCode::CREATED, service::create(&state, input).await?))
 }
 
+// PUT /partners/{partner_id}
 #[debug_handler]
-pub async fn update(
-    AuthenticatedUserOrAdmin(current_user): AuthenticatedUserOrAdmin,
+pub async fn update_partner(
+    AuthenticatedUser(current_user): AuthenticatedUser,
     State(state): State<ApiState>,
     Valid(Path(id)): Valid<Path<requests::PartnerId>>,
     Valid(Json(input)): Valid<Json<requests::UpdatePartner>>,
@@ -73,9 +65,10 @@ pub async fn update(
     service::update(&state, &current_user, id.partner_id, input).await
 }
 
+// DELETE /partners/{partner_id}
 #[debug_handler]
-pub async fn disable(
-    AuthenticatedUserOrAdmin(current_user): AuthenticatedUserOrAdmin,
+pub async fn disable_partner(
+    AuthenticatedUser(current_user): AuthenticatedUser,
     State(state): State<ApiState>,
     Valid(Path(id)): Valid<Path<requests::PartnerId>>,
 ) -> ApiResult<StatusCode> {
@@ -84,8 +77,7 @@ pub async fn disable(
     Ok(StatusCode::NO_CONTENT)
 }
 
-use crate::http::authorization::PartnerContext;
-
+// GET /partners/{partner_id}/members
 #[debug_handler]
 pub async fn list_members(
     current_user: PartnerContext,
@@ -96,6 +88,7 @@ pub async fn list_members(
     service::list_members(&state, &current_user, input).await
 }
 
+// GET /partners/{partner_id}/members/{user_id}
 #[debug_handler]
 pub async fn get_member(
     current_user: PartnerContext,
@@ -106,6 +99,7 @@ pub async fn get_member(
     service::get_member(&state, &current_user, id.user_id).await
 }
 
+// POST /partners/{partner_id}/members
 #[debug_handler]
 pub async fn create_member(
     current_user: PartnerContext,
@@ -119,6 +113,7 @@ pub async fn create_member(
     ))
 }
 
+// PUT /partners/{partner_id}/members/{user_id}
 #[debug_handler]
 pub async fn update_member(
     current_user: PartnerContext,
@@ -130,6 +125,7 @@ pub async fn update_member(
     service::update_member(&state, &current_user, id.user_id, input).await
 }
 
+// DELETE /partners/{partner_id}/members/{user_id}
 #[debug_handler]
 pub async fn disable_member(
     current_user: PartnerContext,

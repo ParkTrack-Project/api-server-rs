@@ -35,16 +35,16 @@ pub struct UserRow {
     pub email: String,
     pub full_name: String,
     pub phone: Option<String>,
-    pub global_role: Option<String>,
-    pub is_active: Option<bool>,
-    pub created_at: Option<NaiveDateTime>,
-    pub updated_at: Option<NaiveDateTime>,
+    pub global_role: String,
+    pub is_active: bool,
+    pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
 }
 
 #[derive(FromRow)]
 pub(crate) struct UserIdentityRow {
-    pub global_role: Option<String>,
-    pub is_active: Option<bool>,
+    pub global_role: String,
+    pub is_active: bool,
 }
 
 pub const MEMBERSHIP_COLUMNS: [PartnerMemberships; 6] = [

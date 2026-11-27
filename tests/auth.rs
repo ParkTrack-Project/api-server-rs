@@ -60,7 +60,8 @@ async fn app(pool: PgPool, mail: Arc<MockEmail>) -> Router {
             .unwrap();
     }
     let config = ApiConfig {
-        api_token: "test-api-token".into(),
+        car_detector_token: "test-api-token".into(),
+        ml_prediction_token: "test-ml-prediction-token".into(),
         database_url: pool.connect_options().to_url_lossy().to_string(),
         jwt_secret: SECRET.into(),
         jwt_expire_seconds: 3600,

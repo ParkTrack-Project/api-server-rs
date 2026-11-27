@@ -5,11 +5,12 @@ use axum::response::IntoResponse;
 use axum_macros::debug_handler;
 use axum_valid::Valid;
 
-use crate::error::ApiError;
 use crate::error::ApiResult;
 use crate::features::auth::service;
-use crate::http::authorization::AuthenticatedUserOrAdmin;
-use crate::http::authorization::PublicAuthenticated;
+use crate::http::{
+    authorization::{Authenticated, AuthenticatedUser},
+    permissions::Permission,
+};
 use crate::state::ApiState;
 
 use super::requests;
@@ -57,12 +58,13 @@ pub async fn reset_password_confirm(
 // POST /auth/logout
 #[debug_handler]
 pub async fn logout(
-    AuthenticatedUserOrAdmin(_current_user): AuthenticatedUserOrAdmin,
+    AuthenticatedUser(current_user): AuthenticatedUser,
     State(state): State<ApiState>,
     axum_extra::TypedHeader(authorization): axum_extra::TypedHeader<
         axum_extra::headers::Authorization<axum_extra::headers::authorization::Bearer>,
     >,
 ) -> ApiResult<StatusCode> {
+    current_user.require(Permission::UsersMeManage)?;
     service::logout(&state, authorization.token()).await?;
     Ok(StatusCode::NO_CONTENT)
 }
@@ -70,13 +72,9 @@ pub async fn logout(
 // GET /auth/me
 #[debug_handler]
 pub async fn get_me(
-    AuthenticatedUserOrAdmin(current_user): AuthenticatedUserOrAdmin,
+    AuthenticatedUser(current_user): AuthenticatedUser,
     State(state): State<ApiState>,
 ) -> ApiResult<responses::Me> {
-    // Возможно есть более правильный способ сделать это...
-    let PublicAuthenticated::User { user_id, .. } = current_user else {
-        return Err(ApiError::Unauthenticated);
-    };
-
-    service::me(&state, user_id).await
+    current_user.require(Permission::UsersMeManage)?;
+    service::me(&state, current_user.user_id).await
 }

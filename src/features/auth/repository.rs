@@ -8,13 +8,15 @@ use sqlx::PgExecutor;
 
 use crate::{
     error::{ApiError, ApiResult},
-    features::auth::models::{
-        LOGIN_USER_COLUMNS, LoginUserRow, PARTNER_MEMBERSHIP_COLUMNS, PartnerMembershipRow,
-        PartnerPermissionRow, PasswordResetTokens, SHORT_PASSWORD_RESET_TOKEN_COLUMNS,
-        SHORT_USER_COLUMNS, ShortPasswordResetTokenRow, ShortUserRow,
+    features::{
+        auth::models::{
+            LOGIN_USER_COLUMNS, LoginUserRow, PARTNER_MEMBERSHIP_COLUMNS, PartnerMembershipRow,
+            PartnerPermissionRow, PasswordResetTokens, SHORT_PASSWORD_RESET_TOKEN_COLUMNS,
+            SHORT_USER_COLUMNS, Sessions, ShortPasswordResetTokenRow, ShortUserRow,
+        },
+        partners::models::{PartnerMemberPermissions, PartnerMemberships},
+        users::models::Users,
     },
-    features::partners::models::{PartnerMemberPermissions, PartnerMemberships},
-    features::users::models::Users,
     http::permissions::GlobalRole,
     utils::hasher::{hash_password, hash_password_reset_token},
 };
@@ -296,7 +298,6 @@ pub async fn revoke_token(
     token: &str,
     expires_at: chrono::NaiveDateTime,
 ) -> ApiResult<()> {
-    use super::models::Sessions;
     let (sql, values) = sea_query::Query::insert()
         .into_table(Sessions::Table)
         .columns([
@@ -317,21 +318,23 @@ pub async fn revoke_token(
                 .to_owned(),
         )
         .build_sqlx(PostgresQueryBuilder);
+
     sqlx::query_with(sqlx::AssertSqlSafe(sql), values)
         .execute(pool)
         .await
         .map_err(anyhow::Error::from)?;
+
     Ok(())
 }
 
 pub async fn is_token_revoked(pool: impl PgExecutor<'_>, token: &str) -> ApiResult<bool> {
-    use super::models::Sessions;
     let (sql, values) = sea_query::Query::select()
         .column(Sessions::UserId)
         .from(Sessions::Table)
         .and_where(Expr::col(Sessions::TokenHash).eq(hash_password_reset_token(token)))
         .and_where(Expr::col(Sessions::RevokedAt).is_not_null())
         .build_sqlx(PostgresQueryBuilder);
+
     Ok(sqlx::query_with(sqlx::AssertSqlSafe(sql), values)
         .fetch_optional(pool)
         .await

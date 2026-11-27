@@ -5,44 +5,40 @@ use super::{
 use crate::features::cameras::repository::CameraAccess;
 use crate::{
     error::{ApiError, ApiResult},
-    http::{authorization::PublicAuthenticated, permissions::GlobalRole},
+    http::{
+        authorization::{Principal, UserIdentity},
+        permissions::GlobalRole,
+    },
     state::ApiState,
     types::CameraView,
 };
-fn scope(user: &PublicAuthenticated, write: bool) -> ZoneAccess {
-    match user {
-        PublicAuthenticated::User {
-            global_role: GlobalRole::User,
-            user_id,
-        } => {
-            if write {
-                ZoneAccess::PublicOwned { user_id: *user_id }
-            } else {
-                ZoneAccess::Public
-            }
+impl ZoneAccess {
+    pub fn for_read(principal: &Principal) -> Self {
+        match principal {
+            Principal::User(user) => Self::for_user_read(user),
+            Principal::Service(_) => Self::All,
         }
-        _ => ZoneAccess::All,
+    }
+
+    pub fn for_user_read(user: &UserIdentity) -> Self {
+        match user.global_role {
+            GlobalRole::User => Self::Public,
+            GlobalRole::Admin => Self::All,
+        }
+    }
+
+    pub fn for_user_write(user: &UserIdentity) -> Self {
+        match user.global_role {
+            GlobalRole::User => Self::PublicOwned {
+                user_id: user.user_id,
+            },
+            GlobalRole::Admin => Self::All,
+        }
     }
 }
-fn camera_access(user: &PublicAuthenticated) -> CameraAccess {
-    match user {
-        PublicAuthenticated::User {
-            global_role: GlobalRole::User,
-            ..
-        } => CameraAccess::Public,
-        _ => CameraAccess::All,
-    }
-}
+
 fn missing() -> ApiError {
     ApiError::NotFound("zone".into())
-}
-#[tracing::instrument(skip(state), err)]
-pub async fn list(
-    state: &ApiState,
-    user: &PublicAuthenticated,
-    input: requests::ListZones,
-) -> ApiResult<responses::ListZones> {
-    list_with_scope(state, input, scope(user, false)).await
 }
 #[tracing::instrument(skip(state), err)]
 pub(crate) async fn list_with_scope(
@@ -63,14 +59,6 @@ pub(crate) async fn list_with_scope(
     })
 }
 #[tracing::instrument(skip(state), err)]
-pub async fn get(
-    state: &ApiState,
-    user: &PublicAuthenticated,
-    id: i32,
-) -> ApiResult<responses::Zone> {
-    get_with_scope(state, id, scope(user, false)).await
-}
-#[tracing::instrument(skip(state), err)]
 pub(crate) async fn get_with_scope(
     state: &ApiState,
     id: i32,
@@ -80,18 +68,6 @@ pub(crate) async fn get_with_scope(
         .await?
         .ok_or_else(missing)
         .map(Into::into)
-}
-#[tracing::instrument(skip(state), err)]
-pub async fn create(
-    state: &ApiState,
-    user: &PublicAuthenticated,
-    input: requests::CreateZone,
-) -> ApiResult<responses::Created> {
-    let owner = match user {
-        PublicAuthenticated::User { user_id, .. } => Some(*user_id),
-        _ => None,
-    };
-    create_with_scope(state, input, owner, camera_access(user)).await
 }
 #[tracing::instrument(skip(state), err)]
 pub(crate) async fn create_with_scope(
@@ -107,15 +83,6 @@ pub(crate) async fn create_with_scope(
     Ok(responses::Created { zone_id })
 }
 #[tracing::instrument(skip(state), err)]
-pub async fn update(
-    state: &ApiState,
-    user: &PublicAuthenticated,
-    id: i32,
-    input: requests::UpdateZone,
-) -> ApiResult<responses::Zone> {
-    update_with_scope(state, id, input, scope(user, true), camera_access(user)).await
-}
-#[tracing::instrument(skip(state), err)]
 pub(crate) async fn update_with_scope(
     state: &ApiState,
     id: i32,
@@ -123,19 +90,7 @@ pub(crate) async fn update_with_scope(
     access: ZoneAccess,
     camera_scope: CameraAccess,
 ) -> ApiResult<responses::Zone> {
-    if input.camera_id.is_none()
-        && input.zone_type.is_none()
-        && input.capacity.is_none()
-        && input.pay.is_none()
-        && input.occupied.is_none()
-        && input.confidence.is_none()
-        && input.geometry.is_none()
-        && input.image_polygon.is_none()
-        && input.location_type.is_none()
-        && input.is_private.is_none()
-        && input.is_accessible.is_none()
-        && input.is_active.is_none()
-    {
+    if input.is_empty() {
         return Err(ApiError::BadRequest("missing body".into()));
     }
     repository::find(&state.pool, id, access)
@@ -164,10 +119,6 @@ pub(crate) async fn update_with_scope(
         .map(Into::into)
 }
 #[tracing::instrument(skip(state), err)]
-pub async fn delete(state: &ApiState, user: &PublicAuthenticated, id: i32) -> ApiResult<()> {
-    delete_with_scope(state, id, scope(user, true)).await
-}
-#[tracing::instrument(skip(state), err)]
 pub(crate) async fn delete_with_scope(
     state: &ApiState,
     id: i32,
@@ -177,4 +128,16 @@ pub(crate) async fn delete_with_scope(
         return Err(missing());
     }
     Ok(())
+}
+
+pub(crate) async fn observation_insert_error(
+    state: &ApiState,
+    id: i32,
+    scope: ZoneAccess,
+) -> ApiError {
+    match repository::find(&state.pool, id, scope).await {
+        Ok(Some(_)) => ApiError::BadRequest("occupied must not exceed capacity".into()),
+        Ok(None) => missing(),
+        Err(error) => error,
+    }
 }

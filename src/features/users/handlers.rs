@@ -7,9 +7,9 @@ use axum_macros::debug_handler;
 use axum_valid::Valid;
 
 use crate::{
-    error::{ApiError, ApiResult},
+    error::ApiResult,
     http::{
-        authorization::{Authenticated, AuthenticatedUserOrAdmin, PublicAuthenticated},
+        authorization::{Authenticated, AuthenticatedUser},
         permissions::Permission,
     },
     state::ApiState,
@@ -17,31 +17,26 @@ use crate::{
 
 use super::{repository::UserAccess, requests, responses, service};
 
-fn user_id(current_user: &PublicAuthenticated) -> ApiResult<i32> {
-    match current_user {
-        PublicAuthenticated::User { user_id, .. } => Ok(*user_id),
-        PublicAuthenticated::ApiToken => Err(ApiError::Unauthenticated),
-    }
-}
-
+// GET /users/me
 #[debug_handler]
 pub async fn get_me(
-    AuthenticatedUserOrAdmin(current_user): AuthenticatedUserOrAdmin,
+    AuthenticatedUser(current_user): AuthenticatedUser,
     State(state): State<ApiState>,
 ) -> ApiResult<responses::UserProfile> {
     current_user.require(Permission::UsersMeManage)?;
-    let user_id = user_id(&current_user)?;
+    let user_id = current_user.user_id;
     service::get_profile(&state, user_id, UserAccess::Only { user_id }).await
 }
 
+// PUT /users/me
 #[debug_handler]
 pub async fn update_me(
-    AuthenticatedUserOrAdmin(current_user): AuthenticatedUserOrAdmin,
+    AuthenticatedUser(current_user): AuthenticatedUser,
     State(state): State<ApiState>,
     Valid(Json(input)): Valid<Json<requests::UpdateProfile>>,
 ) -> ApiResult<responses::User> {
     current_user.require(Permission::UsersMeManage)?;
-    let user_id = user_id(&current_user)?;
+    let user_id = current_user.user_id;
     let update = requests::UpdateUser {
         full_name: input.full_name,
         phone: input.phone,
@@ -50,20 +45,22 @@ pub async fn update_me(
     service::update_user(&state, user_id, update, UserAccess::Only { user_id }).await
 }
 
+// PUT /users/me/password
 #[debug_handler]
 pub async fn change_my_password(
-    AuthenticatedUserOrAdmin(current_user): AuthenticatedUserOrAdmin,
+    AuthenticatedUser(current_user): AuthenticatedUser,
     State(state): State<ApiState>,
     Valid(Json(input)): Valid<Json<requests::ChangePassword>>,
 ) -> ApiResult<StatusCode> {
     current_user.require(Permission::UsersMeManage)?;
-    service::change_password(&state, user_id(&current_user)?, input).await?;
+    service::change_password(&state, current_user.user_id, input).await?;
     Ok(StatusCode::NO_CONTENT)
 }
 
+// GET /users
 #[debug_handler]
 pub async fn list_users(
-    AuthenticatedUserOrAdmin(current_user): AuthenticatedUserOrAdmin,
+    AuthenticatedUser(current_user): AuthenticatedUser,
     State(state): State<ApiState>,
     Valid(Query(input)): Valid<Query<requests::ListUsers>>,
 ) -> ApiResult<responses::ListUsers> {
@@ -71,9 +68,10 @@ pub async fn list_users(
     service::list_users(&state, input, UserAccess::All).await
 }
 
+// GET /users/{user_id}
 #[debug_handler]
 pub async fn get_user(
-    AuthenticatedUserOrAdmin(current_user): AuthenticatedUserOrAdmin,
+    AuthenticatedUser(current_user): AuthenticatedUser,
     State(state): State<ApiState>,
     Valid(Path(path)): Valid<Path<requests::UserId>>,
 ) -> ApiResult<responses::UserProfile> {
@@ -81,9 +79,10 @@ pub async fn get_user(
     service::get_profile(&state, path.user_id, UserAccess::All).await
 }
 
+// POST /users
 #[debug_handler]
 pub async fn create_user(
-    AuthenticatedUserOrAdmin(current_user): AuthenticatedUserOrAdmin,
+    AuthenticatedUser(current_user): AuthenticatedUser,
     State(state): State<ApiState>,
     Valid(Json(input)): Valid<Json<requests::CreateUser>>,
 ) -> ApiResult<(StatusCode, responses::CreatedUser)> {
@@ -93,9 +92,10 @@ pub async fn create_user(
         .map(|user| (StatusCode::CREATED, user))
 }
 
+// PUT /users/{user_id}
 #[debug_handler]
 pub async fn update_user(
-    AuthenticatedUserOrAdmin(current_user): AuthenticatedUserOrAdmin,
+    AuthenticatedUser(current_user): AuthenticatedUser,
     State(state): State<ApiState>,
     Valid(Path(path)): Valid<Path<requests::UserId>>,
     Valid(Json(input)): Valid<Json<requests::UpdateUser>>,
@@ -104,9 +104,10 @@ pub async fn update_user(
     service::update_user(&state, path.user_id, input, UserAccess::All).await
 }
 
+// DELETE /users/{user_id}
 #[debug_handler]
 pub async fn deactivate_user(
-    AuthenticatedUserOrAdmin(current_user): AuthenticatedUserOrAdmin,
+    AuthenticatedUser(current_user): AuthenticatedUser,
     State(state): State<ApiState>,
     Valid(Path(path)): Valid<Path<requests::UserId>>,
 ) -> ApiResult<StatusCode> {

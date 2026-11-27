@@ -296,3 +296,17 @@ pub async fn delete_zone(pool: impl PgExecutor<'_>, id: i32, scope: ZoneAccess) 
         .map_err(db_error)?
         .rows_affected())
 }
+
+pub(crate) fn select_zone_for_observation(
+    id: i32,
+    occupied: i32,
+    scope: ZoneAccess,
+) -> sea_query::SelectStatement {
+    Query::select()
+        .from(Z::Table)
+        .columns([Z::ParkingZoneId, Z::CameraId, Z::PartnerId, Z::Capacity])
+        .cond_where(condition(scope))
+        .and_where(Expr::col(Z::ParkingZoneId).eq(id))
+        .and_where(Expr::col(Z::Capacity).gte(occupied))
+        .take()
+}
