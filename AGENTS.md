@@ -22,6 +22,54 @@
 
 ## Best practices
 
+### `<feature>/handlers.rs`:
+- Нейминг функций и комментарии
+
+*Делай*:
+
+```rust
+// METHOD /<feature>/....
+#[debug_handler]
+pub async fn <method>_<feature>(...)
+
+// Референс
+
+// GET /cameras/{camera_id}
+#[debug_handler]
+pub async fn get_camera(...)
+```
+
+*Вместо*
+
+```rust
+#[debug_handler]
+pub async fn get(...)
+
+// (Нету описания хендлера и фичи в названии)
+```
+
+### `<feature>/service.rs`:
+
+- Нейминг у CRUD
+
+*Делай*:
+
+```rust
+create_<feature>()
+list_<feature>()
+update_<feature>()
+delete_<feature>()
+```
+
+*Вместо*:
+
+```rust
+create()
+list()
+update()
+delete()
+```
+
 ### `<feature>/repository.rs`:
 - В update запросах
 
