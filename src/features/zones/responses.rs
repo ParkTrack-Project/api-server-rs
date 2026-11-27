@@ -1,4 +1,5 @@
 use super::models::ZoneRow;
+use axum::{Json, response::IntoResponse};
 use serde::Serialize;
 #[derive(Debug, Serialize)]
 pub struct Zone {
@@ -22,6 +23,12 @@ pub struct Zone {
     pub occupancy_updated_at: Option<chrono::DateTime<chrono::Utc>>,
     pub created_at: Option<chrono::DateTime<chrono::Utc>>,
     pub updated_at: Option<chrono::DateTime<chrono::Utc>>,
+}
+
+impl IntoResponse for Zone {
+    fn into_response(self) -> axum::response::Response {
+        Json(self).into_response()
+    }
 }
 impl From<ZoneRow> for Zone {
     fn from(row: ZoneRow) -> Self {
@@ -49,9 +56,16 @@ impl From<ZoneRow> for Zone {
         }
     }
 }
+
 #[derive(Debug, Serialize)]
 pub struct Created {
     pub zone_id: i32,
+}
+
+impl IntoResponse for Created {
+    fn into_response(self) -> axum::response::Response {
+        Json(self).into_response()
+    }
 }
 
 #[derive(Debug, Serialize)]
@@ -91,9 +105,16 @@ impl From<ZoneRow> for ZoneMapItem {
         }
     }
 }
+
 #[derive(Debug, Serialize)]
 #[serde(untagged)]
 pub enum ListZones {
     Full(Vec<Zone>),
     Map(Vec<ZoneMapItem>),
+}
+
+impl IntoResponse for ListZones {
+    fn into_response(self) -> axum::response::Response {
+        Json(self).into_response()
+    }
 }

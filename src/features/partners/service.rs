@@ -7,6 +7,7 @@ use crate::{
     http::{authorization::PublicAuthenticated, permissions::GlobalRole},
     state::ApiState,
 };
+
 pub fn access(user: &PublicAuthenticated) -> PartnerAccess {
     match user {
         PublicAuthenticated::User {
@@ -16,6 +17,7 @@ pub fn access(user: &PublicAuthenticated) -> PartnerAccess {
         _ => PartnerAccess::All,
     }
 }
+
 #[tracing::instrument(skip(state), err)]
 pub async fn list(
     state: &ApiState,
@@ -32,6 +34,7 @@ pub async fn list(
         offset: input.offset,
     })
 }
+
 #[tracing::instrument(skip(state), err)]
 pub async fn get(
     state: &ApiState,
@@ -43,6 +46,7 @@ pub async fn get(
         .ok_or_else(|| ApiError::NotFound("partner".into()))
         .map(Into::into)
 }
+
 #[tracing::instrument(skip(state), err)]
 pub async fn create(
     state: &ApiState,
@@ -52,6 +56,7 @@ pub async fn create(
         partner_id: repository::create_partner(&state.pool, input).await?,
     })
 }
+
 #[tracing::instrument(skip(state), err)]
 pub async fn update(
     state: &ApiState,
@@ -72,6 +77,7 @@ pub async fn update(
         .ok_or_else(|| ApiError::NotFound("partner".into()))
         .map(Into::into)
 }
+
 #[tracing::instrument(skip(state), err)]
 pub async fn disable(state: &ApiState, user: &PublicAuthenticated, id: i32) -> ApiResult<()> {
     update(
@@ -92,15 +98,18 @@ pub async fn disable(state: &ApiState, user: &PublicAuthenticated, id: i32) -> A
 
 use super::member_repository as members;
 use crate::http::authorization::PartnerContext;
+
 fn member_missing() -> ApiError {
     ApiError::NotFound("partner membership".into())
 }
+
 async fn ensure_partner(state: &ApiState, partner_id: i32) -> ApiResult<()> {
     repository::find(&state.pool, partner_id, PartnerAccess::All)
         .await?
         .ok_or_else(|| ApiError::NotFound("partner".into()))?;
     Ok(())
 }
+
 #[tracing::instrument(skip(state), err)]
 pub async fn list_members(
     state: &ApiState,
@@ -127,6 +136,7 @@ pub async fn list_members(
         offset: input.offset,
     })
 }
+
 #[tracing::instrument(skip(state), err)]
 pub async fn get_member(
     state: &ApiState,
@@ -144,6 +154,7 @@ pub async fn get_member(
         permissions.remove(&user_id).unwrap_or_default(),
     ))
 }
+
 #[tracing::instrument(skip(state), err)]
 pub async fn create_member(
     state: &ApiState,
@@ -151,6 +162,7 @@ pub async fn create_member(
     input: requests::CreateMember,
 ) -> ApiResult<responses::Member> {
     ensure_partner(state, current_user.partner_id).await?;
+    
     let scope = current_user.scope();
     let mut transaction = state.pool.begin().await.map_err(anyhow::Error::from)?;
     let row = members::create_member(&mut *transaction, scope, &input).await?;
@@ -167,6 +179,7 @@ pub async fn create_member(
     permissions.sort();
     Ok(responses::Member::from_row(row, permissions))
 }
+
 #[tracing::instrument(skip(state), err)]
 pub async fn update_member(
     state: &ApiState,
@@ -206,6 +219,7 @@ pub async fn update_member(
         permissions.remove(&user_id).unwrap_or_default(),
     ))
 }
+
 #[tracing::instrument(skip(state), err)]
 pub async fn disable_member(
     state: &ApiState,

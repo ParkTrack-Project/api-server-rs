@@ -33,12 +33,10 @@ pub async fn list(
     current_user: PartnerContext,
     State(state): State<ApiState>,
     Valid(Query(input)): Valid<Query<requests::ListCamerasQuery>>,
-) -> ApiResult<Json<responses::ListCameras>> {
+) -> ApiResult<responses::ListCameras> {
     current_user.require(Permission::CamerasView)?;
     let scope = access(&current_user, ScopeType::View)?;
-    Ok(Json(
-        service::list_cameras_with_scope(&state, input, scope).await?,
-    ))
+    service::list_cameras_with_scope(&state, input, scope).await
 }
 
 #[debug_handler]
@@ -46,12 +44,10 @@ pub async fn get_one(
     current_user: PartnerContext,
     State(state): State<ApiState>,
     Valid(Path(id)): Valid<Path<requests::CameraId>>,
-) -> ApiResult<Json<responses::Camera>> {
+) -> ApiResult<responses::Camera> {
     current_user.require(Permission::CamerasView)?;
     let scope = access(&current_user, ScopeType::View)?;
-    Ok(Json(
-        service::get_camera_with_scope(&state, id, scope).await?,
-    ))
+    service::get_camera_with_scope(&state, id, scope).await
 }
 
 #[debug_handler]
@@ -59,20 +55,18 @@ pub async fn create(
     current_user: PartnerContext,
     State(state): State<ApiState>,
     Valid(Json(input)): Valid<Json<requests::CreateCamera>>,
-) -> ApiResult<(StatusCode, Json<responses::CreateCamera>)> {
+) -> ApiResult<(StatusCode, responses::CreateCamera)> {
     current_user.require(Permission::CamerasWrite)?;
     access(&current_user, ScopeType::Write)?;
     Ok((
         StatusCode::CREATED,
-        Json(
-            service::create_camera_with_scope(
-                &state,
-                input,
-                Some(current_user.user_id),
-                Some(current_user.partner_id),
-            )
-            .await?,
-        ),
+        service::create_camera_with_scope(
+            &state,
+            input,
+            Some(current_user.user_id),
+            Some(current_user.partner_id),
+        )
+        .await?,
     ))
 }
 
@@ -82,12 +76,10 @@ pub async fn update(
     State(state): State<ApiState>,
     Valid(Path(id)): Valid<Path<requests::CameraId>>,
     Valid(Json(input)): Valid<Json<requests::UpdateCamera>>,
-) -> ApiResult<Json<responses::Camera>> {
+) -> ApiResult<responses::Camera> {
     current_user.require(Permission::CamerasWrite)?;
     let scope = access(&current_user, ScopeType::Write)?;
-    Ok(Json(
-        service::update_camera_with_scope(&state, id, input, scope).await?,
-    ))
+    service::update_camera_with_scope(&state, id, input, scope).await
 }
 
 #[debug_handler]

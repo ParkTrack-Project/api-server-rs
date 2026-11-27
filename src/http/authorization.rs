@@ -38,8 +38,9 @@ impl Authenticated for PublicAuthenticated {
                     false => Err(ApiError::Forbidden(permission)),
                 }
             }
-            Self::ApiToken => {
-                Ok(())
+            Self::ApiToken => match permission {
+                Permission::UsersMeManage => Err(ApiError::Forbidden(permission)),
+                _ => Ok(())
             }
         }
     }
@@ -73,12 +74,10 @@ impl Authenticated for PartnerAuthenticated {
             Self::Member {
                 permissions: effective_permissions,
                 ..
-            } => {
-                match effective_permissions.contains(&permission) {
-                    true => Ok(()),
-                    false => Err(ApiError::Forbidden(permission)),
-                }
-            }
+            } => match effective_permissions.contains(&permission) {
+                true => Ok(()),
+                false => Err(ApiError::Forbidden(permission)),
+            },
         }
     }
 }
@@ -92,6 +91,24 @@ fn get_token_string(parts: &mut Parts) -> ApiResult<String> {
         .to_string();
 
     Ok(parts)
+}
+
+async fn authenticate_user(token: &str, state: &ApiState) -> ApiResult<(i32, GlobalRole)> {
+    let claims = decode_token(token, &state.decoding_key)?.claims;
+    if crate::features::auth::repository::is_token_revoked(&state.pool, token).await? {
+        return Err(ApiError::InvalidToken);
+    }
+    let user_id = i32::try_from(claims.sub).map_err(|_| ApiError::InvalidToken)?;
+    let identity = crate::features::users::repository::find_identity(&state.pool, user_id)
+        .await?
+        .ok_or_else(|| ApiError::NotFound("user".into()))?;
+    if identity.is_active != Some(true) {
+        return Err(ApiError::AccessDenied);
+    }
+    if identity.global_role.as_deref() != Some(claims.role.as_ref()) {
+        return Err(ApiError::InvalidToken);
+    }
+    Ok((user_id, claims.role))
 }
 
 pub struct AuthenticatedOrApiToken(pub PublicAuthenticated);
@@ -109,14 +126,11 @@ impl FromRequestParts<ApiState> for AuthenticatedOrApiToken {
             return Ok(AuthenticatedOrApiToken(PublicAuthenticated::ApiToken));
         }
 
-        let token_data = decode_token(&token, &state.decoding_key)?;
-        if crate::features::auth::repository::is_token_revoked(&state.pool, &token).await? {
-            return Err(ApiError::InvalidToken);
-        }
+        let (user_id, global_role) = authenticate_user(&token, state).await?;
 
         Ok(AuthenticatedOrApiToken(PublicAuthenticated::User {
-            user_id: token_data.claims.sub as i32,
-            global_role: token_data.claims.role,
+            user_id,
+            global_role,
         }))
     }
 }
@@ -132,14 +146,11 @@ impl FromRequestParts<ApiState> for AuthenticatedAdminOrPartner {
     ) -> Result<Self, Self::Rejection> {
         let token = get_token_string(parts)?;
 
-        let token_data = decode_token(&token, &state.decoding_key)?;
-        if crate::features::auth::repository::is_token_revoked(&state.pool, &token).await? {
-            return Err(ApiError::InvalidToken);
-        }
+        let (user_id, global_role) = authenticate_user(&token, state).await?;
 
-        if token_data.claims.role == GlobalRole::Admin {
+        if global_role == GlobalRole::Admin {
             return Ok(AuthenticatedAdminOrPartner(PartnerAuthenticated::Admin {
-                user_id: token_data.claims.sub as i32,
+                user_id,
             }));
         }
 
@@ -177,14 +188,11 @@ impl FromRequestParts<ApiState> for AuthenticatedUserOrAdmin {
     ) -> Result<Self, Self::Rejection> {
         let token = get_token_string(parts)?;
 
-        let token_data = decode_token(&token, &state.decoding_key)?;
-        if crate::features::auth::repository::is_token_revoked(&state.pool, &token).await? {
-            return Err(ApiError::InvalidToken);
-        }
+        let (user_id, global_role) = authenticate_user(&token, state).await?;
 
         Ok(AuthenticatedUserOrAdmin(PublicAuthenticated::User {
-            user_id: token_data.claims.sub as i32,
-            global_role: token_data.claims.role,
+            user_id,
+            global_role,
         }))
     }
 }

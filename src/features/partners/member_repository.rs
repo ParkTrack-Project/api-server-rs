@@ -30,6 +30,7 @@ fn base(scope: MemberAccess) -> sea_query::SelectStatement {
         .and_where(Expr::col((M::Table, M::PartnerId)).eq(scope.partner_id()))
         .to_owned()
 }
+
 pub async fn find(
     pool: impl PgExecutor<'_>,
     scope: MemberAccess,
@@ -39,11 +40,13 @@ pub async fn find(
         .columns(MEMBER_COLUMNS)
         .and_where(Expr::col(M::UserId).eq(user_id))
         .build_sqlx(PostgresQueryBuilder);
+
     sqlx::query_as_with(sqlx::AssertSqlSafe(sql), values)
         .fetch_optional(pool)
         .await
         .map_err(db_error)
 }
+
 // Reads identity and activity only; authorization decisions belong to the extractor/handler.
 pub async fn active_identity(
     pool: impl PgExecutor<'_>,
@@ -65,11 +68,13 @@ pub async fn active_identity(
         .and_where(Expr::col((P::Table, P::IsActive)).eq(true))
         .and_where(Expr::col((U::Table, U::IsActive)).eq(true))
         .build_sqlx(PostgresQueryBuilder);
+
     sqlx::query_as_with(sqlx::AssertSqlSafe(sql), values)
         .fetch_optional(pool)
         .await
         .map_err(db_error)
 }
+
 fn filtered(scope: MemberAccess, input: &requests::ListMembers) -> sea_query::SelectStatement {
     let mut q = base(scope);
     q.inner_join(
@@ -91,6 +96,7 @@ fn filtered(scope: MemberAccess, input: &requests::ListMembers) -> sea_query::Se
     });
     q
 }
+
 pub async fn list_members(
     pool: impl PgExecutor<'_>,
     scope: MemberAccess,
@@ -102,11 +108,13 @@ pub async fn list_members(
         .limit(input.top)
         .offset(input.offset)
         .build_sqlx(PostgresQueryBuilder);
+
     sqlx::query_as_with(sqlx::AssertSqlSafe(sql), values)
         .fetch_all(pool)
         .await
         .map_err(db_error)
 }
+
 pub async fn count(
     pool: impl PgExecutor<'_>,
     scope: MemberAccess,
@@ -115,6 +123,7 @@ pub async fn count(
     let (sql, values) = filtered(scope, input)
         .expr(Expr::col(M::PartnerMembershipId).count())
         .build_sqlx(PostgresQueryBuilder);
+
     sqlx::query_scalar_with(sqlx::AssertSqlSafe(sql), values)
         .fetch_one(pool)
         .await
@@ -128,6 +137,7 @@ pub async fn permissions(
     if users.is_empty() {
         return Ok(HashMap::new());
     }
+
     let (sql, values) = Query::select()
         .columns([G::UserId, G::Permission])
         .from(G::Table)
@@ -135,14 +145,17 @@ pub async fn permissions(
         .and_where(Expr::col(G::UserId).is_in(users))
         .order_by(G::Permission, sea_query::Order::Asc)
         .build_sqlx(PostgresQueryBuilder);
+
     let rows = sqlx::query_as_with::<_, MemberPermissionRow, _>(sqlx::AssertSqlSafe(sql), values)
         .fetch_all(pool)
         .await
         .map_err(db_error)?;
+
     let mut grouped: HashMap<i32, Vec<String>> = HashMap::new();
     for row in rows {
         grouped.entry(row.user_id).or_default().push(row.permission);
     }
+    
     Ok(grouped)
 }
 pub async fn create_member(
