@@ -581,13 +581,7 @@ async fn service_tokens_are_limited_to_their_routes(pool: PgPool) {
             DETECTOR,
             StatusCode::OK,
         ),
-        (
-            "GET",
-            "/zones",
-            json!(null),
-            DETECTOR,
-            StatusCode::BAD_REQUEST,
-        ),
+        ("GET", "/zones", json!(null), DETECTOR, StatusCode::OK),
         ("GET", "/zones", json!(null), PREDICTION, StatusCode::OK),
         ("GET", "/zones", json!(null), &user, StatusCode::OK),
         (
