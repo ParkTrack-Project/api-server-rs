@@ -155,7 +155,7 @@ pub async fn permissions(
     for row in rows {
         grouped.entry(row.user_id).or_default().push(row.permission);
     }
-    
+
     Ok(grouped)
 }
 pub async fn create_member(

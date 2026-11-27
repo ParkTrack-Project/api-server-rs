@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use jsonwebtoken::DecodingKey;
 use sqlx::{PgPool, postgres::PgPoolOptions};
+use tokio::sync::Mutex;
 
 #[derive(Clone)]
 pub struct ApiState {
@@ -13,6 +14,7 @@ pub struct ApiStateInner {
     pub config: ApiConfig,
     pub decoding_key: DecodingKey,
     pub pool: PgPool,
+    pub(crate) next_camera_cursor: Arc<Mutex<Option<i32>>>,
     pub email_service: Arc<dyn crate::utils::smtp_service::EmailService>,
 }
 
@@ -34,16 +36,7 @@ impl ApiState {
             .await
             .expect("Database connection should be set up");
 
-        let inner = ApiStateInner {
-            config,
-            decoding_key,
-            pool,
-            email_service: Arc::new(crate::utils::smtp_service::SmtpEmailService),
-        };
-
-        Self {
-            inner: Arc::new(inner),
-        }
+        Self::new(config, decoding_key, pool).await
     }
 
     pub fn with_email_service(
@@ -60,6 +53,7 @@ impl ApiState {
                 config,
                 decoding_key,
                 pool,
+                next_camera_cursor: Arc::new(Mutex::new(None)),
                 email_service: Arc::new(crate::utils::smtp_service::SmtpEmailService),
             }),
         }
@@ -68,7 +62,8 @@ impl ApiState {
 
 #[derive(Clone)]
 pub struct ApiConfig {
-    pub api_token: String,
+    pub car_detector_token: String,
+    pub ml_prediction_token: String,
 
     pub database_url: String,
 
@@ -94,7 +89,12 @@ impl ApiConfig {
         // Existing environment variables take precedence over values from .env.
         use dotenvy::var;
 
-        let api_token = var("API_TOKEN").expect("API_TOKEN must be set");
+        let car_detector_token = service_token("CAR_DETECTOR_TOKEN");
+        let ml_prediction_token = service_token("ML_PREDICTION_TOKEN");
+        assert!(
+            car_detector_token != ml_prediction_token,
+            "service tokens must be distinct"
+        );
 
         let database_url = var("DATABASE_URL").expect("DATABASE_URL must be set");
 
@@ -133,7 +133,8 @@ impl ApiConfig {
             .expect("SMTP_USE_SSL must be a boolean");
 
         Self {
-            api_token,
+            car_detector_token,
+            ml_prediction_token,
             database_url,
             jwt_secret,
             jwt_expire_seconds,
@@ -150,4 +151,13 @@ impl ApiConfig {
             password_reset_login_url,
         }
     }
+}
+
+fn service_token(name: &str) -> String {
+    let token = dotenvy::var(name).unwrap_or_else(|_| panic!("{name} must be set"));
+    assert!(
+        !token.is_empty() && token.bytes().all(|byte| byte.is_ascii_graphic()),
+        "{name} must contain a non-empty bearer token"
+    );
+    token
 }

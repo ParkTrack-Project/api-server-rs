@@ -12,13 +12,13 @@ pub mod responses;
 pub mod service;
 pub fn zone_routes() -> Router<ApiState> {
     Router::new()
-        .route("/", get(handlers::list))
-        .route("/new", post(handlers::create))
+        .route("/", get(handlers::list_zones))
+        .route("/new", post(handlers::create_zone))
         .route(
             "/{zone_id}",
-            get(handlers::get)
-                .put(handlers::update)
-                .delete(handlers::delete),
+            get(handlers::get_zone)
+                .put(handlers::update_zone)
+                .delete(handlers::delete_zone),
         )
 }
 

@@ -3,15 +3,13 @@ use axum_extra::headers::{Authorization, HeaderMapExt, authorization::Bearer};
 use constant_time_eq::constant_time_eq;
 
 use crate::{
-    error::{
-        ApiError::{self, Unauthenticated},
-        ApiResult,
-    },
+    error::{ApiError, ApiResult},
+    features::{auth::repository::is_token_revoked, users::repository::find_identity},
     http::{
-        permissions::{GlobalRole, Permission, Scope},
+        permissions::{GlobalRole, Permission, Scope, ServicePermission},
         token::decode_token,
     },
-    state::ApiState,
+    state::{ApiConfig, ApiState},
 };
 
 pub trait Authenticated {
@@ -19,181 +17,175 @@ pub trait Authenticated {
 }
 
 #[derive(Debug)]
-pub enum PublicAuthenticated {
-    User {
-        user_id: i32,
-        global_role: GlobalRole,
-    },
-    ApiToken,
-}
-
-impl Authenticated for PublicAuthenticated {
-    fn require(&self, permission: Permission) -> ApiResult<()> {
-        match &self {
-            Self::User { global_role, .. } => {
-                let effective_permissions = global_role.get_permissions();
-
-                match effective_permissions.contains(&permission) {
-                    true => Ok(()),
-                    false => Err(ApiError::Forbidden(permission)),
-                }
-            }
-            Self::ApiToken => match permission {
-                Permission::UsersMeManage => Err(ApiError::Forbidden(permission)),
-                _ => Ok(())
-            }
-        }
-    }
+pub struct UserIdentity {
+    pub user_id: i32,
+    pub global_role: GlobalRole,
 }
 
 #[derive(Debug)]
-pub enum PartnerAuthenticated {
-    Admin {
-        user_id: i32,
-    },
-    Member {
-        user_id: i32,
-        permissions: Vec<Permission>,
-        view_scope: Scope,
-        write_scope: Scope,
-        delete_scope: Scope,
-    },
+pub struct ServiceIdentity {
+    pub service_id: ServiceId,
 }
 
-impl Authenticated for PartnerAuthenticated {
-    fn require(&self, permission: Permission) -> ApiResult<()> {
-        match &self {
-            Self::Admin { .. } => {
-                let effective_permissions = GlobalRole::Admin.get_permissions();
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ServiceId {
+    CarDetector,
+    MlPrediction,
+}
 
-                match effective_permissions.contains(&permission) {
-                    true => Ok(()),
-                    false => Err(ApiError::Forbidden(permission)),
-                }
-            }
-            Self::Member {
-                permissions: effective_permissions,
-                ..
-            } => match effective_permissions.contains(&permission) {
-                true => Ok(()),
-                false => Err(ApiError::Forbidden(permission)),
-            },
+#[derive(Debug)]
+pub enum Principal {
+    User(UserIdentity),
+    Service(ServiceIdentity),
+}
+
+impl Authenticated for UserIdentity {
+    fn require(&self, permission: Permission) -> ApiResult<()> {
+        if self.global_role.get_permissions().contains(&permission) {
+            Ok(())
+        } else {
+            Err(ApiError::Forbidden(permission))
         }
     }
 }
 
-fn get_token_string(parts: &mut Parts) -> ApiResult<String> {
-    let parts = parts
+impl ServiceIdentity {
+    pub fn require(&self, permission: ServicePermission) -> ApiResult<()> {
+        use ServicePermission::*;
+
+        let allowed = match self.service_id {
+            ServiceId::CarDetector => matches!(
+                permission,
+                DetectionClaim | ZonesView | ZoneOccupancyWrite | OccupancyWrite
+            ),
+            ServiceId::MlPrediction => matches!(
+                permission,
+                CamerasView
+                    | ZonesView
+                    | OccupancyView
+                    | WeatherView
+                    | WeatherWrite
+                    | ForecastsWrite
+            ),
+        };
+
+        if allowed {
+            Ok(())
+        } else {
+            Err(ApiError::ForbiddenService(permission))
+        }
+    }
+}
+
+impl Authenticated for Principal {
+    fn require(&self, permission: Permission) -> ApiResult<()> {
+        match (self, permission) {
+            (Self::User(user), permission) => user.require(permission),
+            (Self::Service(service), Permission::CamerasView) => {
+                service.require(ServicePermission::CamerasView)
+            }
+            (Self::Service(service), Permission::ZonesView) => {
+                service.require(ServicePermission::ZonesView)
+            }
+            (Self::Service(_), permission) => Err(ApiError::Forbidden(permission)),
+        }
+    }
+}
+
+fn bearer(parts: &Parts) -> ApiResult<Authorization<Bearer>> {
+    parts
         .headers
         .typed_get::<Authorization<Bearer>>()
-        .ok_or(ApiError::Unauthenticated)?
-        .token()
-        .to_string();
-
-    Ok(parts)
+        .ok_or(ApiError::Unauthenticated)
 }
 
-async fn authenticate_user(token: &str, state: &ApiState) -> ApiResult<(i32, GlobalRole)> {
-    let claims = decode_token(token, &state.decoding_key)?.claims;
-    if crate::features::auth::repository::is_token_revoked(&state.pool, token).await? {
+fn authenticate_service(token: &str, config: &ApiConfig) -> ApiResult<Option<ServiceIdentity>> {
+    let credentials = [
+        (ServiceId::CarDetector, &config.car_detector_token),
+        (ServiceId::MlPrediction, &config.ml_prediction_token),
+    ];
+    let mut matching_services = credentials
+        .into_iter()
+        .filter_map(|(service_id, configured)| {
+            (!configured.is_empty() && constant_time_eq(configured.as_bytes(), token.as_bytes()))
+                .then_some(ServiceIdentity { service_id })
+        });
+
+    let identity = matching_services.next();
+    if matching_services.next().is_some() {
         return Err(ApiError::InvalidToken);
     }
+
+    Ok(identity)
+}
+
+async fn authenticate_user(token: &str, state: &ApiState) -> ApiResult<UserIdentity> {
+    let claims = decode_token(token, &state.decoding_key)?.claims;
+
+    if is_token_revoked(&state.pool, token).await? {
+        return Err(ApiError::InvalidToken);
+    }
+
     let user_id = i32::try_from(claims.sub).map_err(|_| ApiError::InvalidToken)?;
-    let identity = crate::features::users::repository::find_identity(&state.pool, user_id)
+    let identity = find_identity(&state.pool, user_id)
         .await?
         .ok_or_else(|| ApiError::NotFound("user".into()))?;
-    if identity.is_active != Some(true) {
+
+    if !identity.is_active {
         return Err(ApiError::AccessDenied);
     }
-    if identity.global_role.as_deref() != Some(claims.role.as_ref()) {
+
+    if identity.global_role != claims.role.as_ref() {
         return Err(ApiError::InvalidToken);
     }
-    Ok((user_id, claims.role))
+
+    Ok(UserIdentity {
+        user_id,
+        global_role: claims.role,
+    })
 }
 
-pub struct AuthenticatedOrApiToken(pub PublicAuthenticated);
+pub struct AuthenticatedUser(pub UserIdentity);
 
-impl FromRequestParts<ApiState> for AuthenticatedOrApiToken {
+impl FromRequestParts<ApiState> for AuthenticatedUser {
     type Rejection = ApiError;
 
-    async fn from_request_parts(
-        parts: &mut Parts,
-        state: &ApiState,
-    ) -> Result<Self, Self::Rejection> {
-        let token = get_token_string(parts)?;
-
-        if constant_time_eq(state.config.api_token.as_bytes(), token.as_bytes()) {
-            return Ok(AuthenticatedOrApiToken(PublicAuthenticated::ApiToken));
+    async fn from_request_parts(parts: &mut Parts, state: &ApiState) -> ApiResult<Self> {
+        let bearer = bearer(parts)?;
+        let token = bearer.token();
+        if authenticate_service(token, &state.config)?.is_some() {
+            return Err(ApiError::InvalidToken);
         }
-
-        let (user_id, global_role) = authenticate_user(&token, state).await?;
-
-        Ok(AuthenticatedOrApiToken(PublicAuthenticated::User {
-            user_id,
-            global_role,
-        }))
+        authenticate_user(token, state).await.map(Self)
     }
 }
 
-pub struct AuthenticatedAdminOrPartner(pub PartnerAuthenticated);
+pub struct AuthenticatedService(pub ServiceIdentity);
 
-impl FromRequestParts<ApiState> for AuthenticatedAdminOrPartner {
+impl FromRequestParts<ApiState> for AuthenticatedService {
     type Rejection = ApiError;
 
-    async fn from_request_parts(
-        parts: &mut Parts,
-        state: &ApiState,
-    ) -> Result<Self, Self::Rejection> {
-        let token = get_token_string(parts)?;
-
-        let (user_id, global_role) = authenticate_user(&token, state).await?;
-
-        if global_role == GlobalRole::Admin {
-            return Ok(AuthenticatedAdminOrPartner(PartnerAuthenticated::Admin {
-                user_id,
-            }));
-        }
-
-        todo!()
+    async fn from_request_parts(parts: &mut Parts, state: &ApiState) -> ApiResult<Self> {
+        let bearer = bearer(parts)?;
+        authenticate_service(bearer.token(), &state.config)?
+            .map(Self)
+            .ok_or(ApiError::InvalidToken)
     }
 }
 
-pub struct ApiToken;
+pub struct AuthenticatedPrincipal(pub Principal);
 
-impl FromRequestParts<ApiState> for ApiToken {
+impl FromRequestParts<ApiState> for AuthenticatedPrincipal {
     type Rejection = ApiError;
 
-    async fn from_request_parts(
-        parts: &mut Parts,
-        state: &ApiState,
-    ) -> Result<Self, Self::Rejection> {
-        let token = get_token_string(parts)?;
-
-        if constant_time_eq(state.config.api_token.as_bytes(), token.as_bytes()) {
-            return Ok(ApiToken);
-        }
-
-        Err(Unauthenticated)
-    }
-}
-
-pub struct AuthenticatedUserOrAdmin(pub PublicAuthenticated);
-
-impl FromRequestParts<ApiState> for AuthenticatedUserOrAdmin {
-    type Rejection = ApiError;
-
-    async fn from_request_parts(
-        parts: &mut Parts,
-        state: &ApiState,
-    ) -> Result<Self, Self::Rejection> {
-        let token = get_token_string(parts)?;
-
-        let (user_id, global_role) = authenticate_user(&token, state).await?;
-
-        Ok(AuthenticatedUserOrAdmin(PublicAuthenticated::User {
-            user_id,
-            global_role,
-        }))
+    async fn from_request_parts(parts: &mut Parts, state: &ApiState) -> ApiResult<Self> {
+        let bearer = bearer(parts)?;
+        let token = bearer.token();
+        let principal = match authenticate_service(token, &state.config)? {
+            Some(service) => Principal::Service(service),
+            None => Principal::User(authenticate_user(token, state).await?),
+        };
+        Ok(Self(principal))
     }
 }
 
@@ -250,8 +242,10 @@ impl FromRequestParts<ApiState> for PartnerContext {
     type Rejection = ApiError;
     async fn from_request_parts(parts: &mut Parts, state: &ApiState) -> ApiResult<Self> {
         use crate::features::partners::{member_repository as repository, requests::PartnerId};
-        let AuthenticatedUserOrAdmin(identity) =
-            AuthenticatedUserOrAdmin::from_request_parts(parts, state).await?;
+        let AuthenticatedUser(UserIdentity {
+            user_id,
+            global_role,
+        }) = AuthenticatedUser::from_request_parts(parts, state).await?;
         let axum::extract::Path(path) =
             axum::extract::Path::<PartnerId>::from_request_parts(parts, state)
                 .await
@@ -260,14 +254,6 @@ impl FromRequestParts<ApiState> for PartnerContext {
         if path.partner_id <= 0 {
             return Err(ApiError::BadRequest("invalid partner id".into()));
         }
-
-        let PublicAuthenticated::User {
-            user_id,
-            global_role,
-        } = identity
-        else {
-            return Err(ApiError::Unauthenticated);
-        };
 
         if global_role == GlobalRole::Admin {
             crate::features::partners::repository::find(

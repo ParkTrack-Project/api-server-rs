@@ -1,5 +1,5 @@
 use anyhow::Context;
-use sea_query::{Alias, Cond, Expr, ExprTrait, Func, PostgresQueryBuilder};
+use sea_query::{Cond, Expr, ExprTrait, PostgresQueryBuilder};
 use sea_query_sqlx::SqlxBinder;
 use sqlx::PgExecutor;
 
@@ -56,32 +56,26 @@ pub async fn list_camera_map_items(
         .map_err(ApiError::from)
 }
 
-pub async fn get_next_camera(pool: impl PgExecutor<'_>, idx: i32) -> ApiResult<CameraNextRow> {
+pub async fn find_next_camera(
+    pool: impl PgExecutor<'_>,
+    after_id: Option<i32>,
+    scope: CameraAccess,
+) -> ApiResult<Option<CameraNextRow>> {
     let (sql, values) = sea_query::Query::select()
         .from(Cameras::Table)
         .columns(CAMERA_NEXT_COLUMNS)
-        .column(Alias::new("next_id"))
-        .offset((idx - 1).try_into().unwrap_or(0))
+        .cond_where(scope_condition(scope))
+        .apply_if(after_id, |query, id| {
+            query.and_where(Expr::col(Cameras::CameraId).gt(id));
+        })
+        .order_by(Cameras::CameraId, sea_query::Order::Asc)
         .limit(1)
         .build_sqlx(PostgresQueryBuilder);
 
     sqlx::query_as_with(sqlx::AssertSqlSafe(sql), values)
-        .fetch_one(pool)
+        .fetch_optional(pool)
         .await
         .context("fetching next camera")
-        .map_err(ApiError::from)
-}
-
-pub async fn count_cameras(pool: impl PgExecutor<'_>) -> ApiResult<i32> {
-    let (sql, values) = sea_query::Query::select()
-        .from(Cameras::Table)
-        .expr(Func::count(Expr::col(Cameras::CameraId)))
-        .build_sqlx(PostgresQueryBuilder);
-
-    sqlx::query_scalar_with::<_, i32, _>(sqlx::AssertSqlSafe(sql), values)
-        .fetch_one(pool)
-        .await
-        .context("counting cameras")
         .map_err(ApiError::from)
 }
 
@@ -131,10 +125,10 @@ pub async fn create_camera_with_partner(
         .await
         .map_err(|e| {
             if let sqlx::Error::Database(db_err) = &e
-                && db_err.is_unique_violation() {
-                    return ApiError::Conflict("camera already exists".to_string());
-                }
-            
+                && db_err.is_unique_violation()
+            {
+                return ApiError::Conflict("camera already exists".to_string());
+            }
 
             ApiError::InternalError(
                 anyhow::Error::from(e)

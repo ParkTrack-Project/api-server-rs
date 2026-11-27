@@ -159,3 +159,25 @@ pub static ADMIN_PERMISSIONS: LazyLock<Vec<Permission>> = LazyLock::new(|| {
     ]
     .concat()
 });
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Display)]
+pub enum ServicePermission {
+    #[strum(serialize = "detection.claim")]
+    DetectionClaim,
+    #[strum(serialize = "cameras.view")]
+    CamerasView,
+    #[strum(serialize = "zones.view")]
+    ZonesView,
+    #[strum(serialize = "zones.occupancy.write")]
+    ZoneOccupancyWrite,
+    #[strum(serialize = "occupancy.view")]
+    OccupancyView,
+    #[strum(serialize = "occupancy.write")]
+    OccupancyWrite,
+    #[strum(serialize = "weather.view")]
+    WeatherView,
+    #[strum(serialize = "weather.write")]
+    WeatherWrite,
+    #[strum(serialize = "forecasts.write")]
+    ForecastsWrite,
+}

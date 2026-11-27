@@ -3,7 +3,7 @@ use serde_json::json;
 use thiserror::Error;
 use validator::ValidationErrors;
 
-use crate::http::permissions::Permission;
+use crate::http::permissions::{Permission, ServicePermission};
 
 #[derive(Debug, Error)]
 #[non_exhaustive]
@@ -44,6 +44,9 @@ pub enum ApiError {
     #[error("missing permission: {0}")]
     Forbidden(Permission),
 
+    #[error("missing permission: {0}")]
+    ForbiddenService(ServicePermission),
+
     #[error("access denied")]
     AccessDenied,
 
@@ -70,7 +73,9 @@ impl IntoResponse for ApiError {
             | ApiError::InvalidCredentials
             | ApiError::TokenExpired
             | ApiError::InvalidToken => StatusCode::UNAUTHORIZED,
-            ApiError::Forbidden(_) | ApiError::AccessDenied => StatusCode::FORBIDDEN,
+            ApiError::Forbidden(_) | ApiError::ForbiddenService(_) | ApiError::AccessDenied => {
+                StatusCode::FORBIDDEN
+            }
             ApiError::ValidationError(_) => StatusCode::BAD_REQUEST,
             ApiError::InternalError(_) => StatusCode::INTERNAL_SERVER_ERROR,
             ApiError::Conflict(_) => StatusCode::CONFLICT,

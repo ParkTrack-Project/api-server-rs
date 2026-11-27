@@ -21,7 +21,8 @@ const API_TOKEN: &str = "users-test-api-token";
 
 async fn app(pool: PgPool) -> Router {
     let config = ApiConfig {
-        api_token: API_TOKEN.into(),
+        car_detector_token: API_TOKEN.into(),
+        ml_prediction_token: "test-ml-prediction-token".into(),
         database_url: pool.connect_options().to_url_lossy().to_string(),
         jwt_secret: JWT_SECRET.into(),
         jwt_expire_seconds: 3600,

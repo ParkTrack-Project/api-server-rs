@@ -4,7 +4,7 @@ mod repository {
     use std::assert_matches;
 
     use api_server_rust::{
-        error::{ApiResult},
+        error::ApiResult,
         features::cameras::{repository::CameraAccess, *},
         types::Bbox,
     };

@@ -93,7 +93,7 @@ pub struct CreateZone {
     pub is_private: Option<bool>,
     pub is_accessible: Option<bool>,
 }
-#[derive(Debug, Deserialize, Validate)]
+#[derive(Debug, Default, Deserialize, Validate)]
 pub struct UpdateZone {
     #[validate(range(min = 1))]
     pub camera_id: Option<i32>,
@@ -115,6 +115,25 @@ pub struct UpdateZone {
     pub is_accessible: Option<bool>,
     pub is_active: Option<bool>,
 }
+impl UpdateZone {
+    pub fn has_configuration_changes(&self) -> bool {
+        self.camera_id.is_some()
+            || self.zone_type.is_some()
+            || self.capacity.is_some()
+            || self.pay.is_some()
+            || self.geometry.is_some()
+            || self.image_polygon.is_some()
+            || self.location_type.is_some()
+            || self.is_private.is_some()
+            || self.is_accessible.is_some()
+            || self.is_active.is_some()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        !self.has_configuration_changes() && self.occupied.is_none() && self.confidence.is_none()
+    }
+}
+
 pub fn centroid(geometry: &serde_json::Value) -> (f64, f64) {
     let points = geometry["coordinates"][0].as_array();
     let (mut longitude, mut latitude, mut count) = (0., 0., 0.);

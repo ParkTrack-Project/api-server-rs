@@ -4,24 +4,23 @@ use super::{
 };
 use crate::{
     error::{ApiError, ApiResult},
-    http::{authorization::PublicAuthenticated, permissions::GlobalRole},
+    http::{authorization::UserIdentity, permissions::GlobalRole},
     state::ApiState,
 };
 
-pub fn access(user: &PublicAuthenticated) -> PartnerAccess {
-    match user {
-        PublicAuthenticated::User {
-            global_role: GlobalRole::User,
-            user_id,
-        } => PartnerAccess::Member { user_id: *user_id },
-        _ => PartnerAccess::All,
+pub fn access(user: &UserIdentity) -> PartnerAccess {
+    match user.global_role {
+        GlobalRole::User => PartnerAccess::Member {
+            user_id: user.user_id,
+        },
+        GlobalRole::Admin => PartnerAccess::All,
     }
 }
 
 #[tracing::instrument(skip(state), err)]
 pub async fn list(
     state: &ApiState,
-    user: &PublicAuthenticated,
+    user: &UserIdentity,
     input: requests::ListPartners,
 ) -> ApiResult<responses::Page<responses::Partner>> {
     let scope = access(user);
@@ -36,11 +35,7 @@ pub async fn list(
 }
 
 #[tracing::instrument(skip(state), err)]
-pub async fn get(
-    state: &ApiState,
-    user: &PublicAuthenticated,
-    id: i32,
-) -> ApiResult<responses::Partner> {
+pub async fn get(state: &ApiState, user: &UserIdentity, id: i32) -> ApiResult<responses::Partner> {
     repository::find(&state.pool, id, access(user))
         .await?
         .ok_or_else(|| ApiError::NotFound("partner".into()))
@@ -60,7 +55,7 @@ pub async fn create(
 #[tracing::instrument(skip(state), err)]
 pub async fn update(
     state: &ApiState,
-    user: &PublicAuthenticated,
+    user: &UserIdentity,
     id: i32,
     input: requests::UpdatePartner,
 ) -> ApiResult<responses::Partner> {
@@ -79,7 +74,7 @@ pub async fn update(
 }
 
 #[tracing::instrument(skip(state), err)]
-pub async fn disable(state: &ApiState, user: &PublicAuthenticated, id: i32) -> ApiResult<()> {
+pub async fn disable(state: &ApiState, user: &UserIdentity, id: i32) -> ApiResult<()> {
     update(
         state,
         user,
@@ -162,7 +157,7 @@ pub async fn create_member(
     input: requests::CreateMember,
 ) -> ApiResult<responses::Member> {
     ensure_partner(state, current_user.partner_id).await?;
-    
+
     let scope = current_user.scope();
     let mut transaction = state.pool.begin().await.map_err(anyhow::Error::from)?;
     let row = members::create_member(&mut *transaction, scope, &input).await?;
