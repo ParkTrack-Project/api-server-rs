@@ -12,10 +12,10 @@ pub struct User {
     pub email: String,
     pub full_name: String,
     pub phone: Option<String>,
-    pub global_role: Option<GlobalRole>,
-    pub is_active: Option<bool>,
-    pub created_at: Option<NaiveDateTime>,
-    pub updated_at: Option<NaiveDateTime>,
+    pub global_role: GlobalRole,
+    pub is_active: bool,
+    pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
 }
 
 impl IntoResponse for User {
@@ -28,11 +28,7 @@ impl TryFrom<UserRow> for User {
     type Error = ApiError;
 
     fn try_from(row: UserRow) -> Result<Self, Self::Error> {
-        let global_role = row
-            .global_role
-            .map(|role| role.parse::<GlobalRole>())
-            .transpose()
-            .map_err(anyhow::Error::from)?;
+        let global_role: GlobalRole = row.global_role.parse().map_err(anyhow::Error::from)?;
 
         Ok(Self {
             user_id: row.user_id,

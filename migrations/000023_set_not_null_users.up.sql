@@ -1,0 +1,5 @@
+ALTER TABLE users
+    ALTER COLUMN global_role SET NOT NULL,
+    ALTER COLUMN is_active SET NOT NULL,
+    ALTER COLUMN created_at SET NOT NULL,
+    ALTER COLUMN updated_at SET NOT NULL
