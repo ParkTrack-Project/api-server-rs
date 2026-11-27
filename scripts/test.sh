@@ -29,5 +29,7 @@ if not url:
 environment = os.environ.copy()
 environment["TEST_DATABASE_URL"] = url
 environment["DATABASE_URL"] = url
+# Each integration test binary is linked separately. Limit peak build memory.
+environment.setdefault("CARGO_BUILD_JOBS", "1")
 os.execvpe("cargo", ["cargo", "test", "--locked", *sys.argv[1:]], environment)
 PY

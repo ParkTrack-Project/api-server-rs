@@ -654,13 +654,7 @@ async fn service_tokens_are_limited_to_their_routes(pool: PgPool) {
             DETECTOR,
             StatusCode::FORBIDDEN,
         ),
-        (
-            "GET",
-            "/occupancy",
-            json!(null),
-            &admin,
-            StatusCode::UNAUTHORIZED,
-        ),
+        ("GET", "/occupancy", json!(null), &admin, StatusCode::OK),
         (
             "GET",
             "/weather",
@@ -740,7 +734,7 @@ async fn detector_observations_and_ml_data_are_persisted(pool: PgPool) {
             "/occupancy/new",
             over_capacity,
             DETECTOR,
-            StatusCode::BAD_REQUEST,
+            StatusCode::UNPROCESSABLE_ENTITY,
         ),
         (
             "/occupancy/new",

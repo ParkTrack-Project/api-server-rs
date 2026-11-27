@@ -149,6 +149,8 @@ pub static ADMIN_PERMISSIONS: LazyLock<Vec<Permission>> = LazyLock::new(|| {
             Permission::CamerasView,
             Permission::CamerasWrite,
             Permission::CamerasDelete,
+            Permission::OccupancyWrite,
+            Permission::OccupancyDelete,
             Permission::ZonesView,
             Permission::ZonesWrite,
             Permission::ZonesDelete,

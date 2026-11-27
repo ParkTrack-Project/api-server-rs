@@ -16,4 +16,10 @@ pub fn occupancy_routes() -> Router<ApiState> {
     Router::new()
         .route("/", get(handlers::list_observations))
         .route("/new", post(handlers::create_observation))
+        .route(
+            "/{observation_id}",
+            get(handlers::get_observation)
+                .put(handlers::update_observation)
+                .delete(handlers::delete_observation),
+        )
 }
