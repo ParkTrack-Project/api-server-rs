@@ -81,17 +81,3 @@ pub(crate) const MAX_OBSERVATION_OFFSET: u64 = i64::MAX as u64;
 pub(crate) fn default_observation_top() -> u64 {
     1000
 }
-
-pub(crate) fn validate_observation_interval(
-    from: Option<chrono::DateTime<chrono::Utc>>,
-    to: Option<chrono::DateTime<chrono::Utc>>,
-) -> crate::error::ApiResult<()> {
-    if let (Some(from), Some(to)) = (from, to)
-        && from >= to
-    {
-        return Err(crate::error::ApiError::BadRequest(
-            "from must precede to".into(),
-        ));
-    }
-    Ok(())
-}

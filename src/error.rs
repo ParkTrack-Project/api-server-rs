@@ -54,6 +54,15 @@ pub enum ApiError {
     #[error(transparent)]
     ValidationError(#[from] ValidationErrors),
 
+    #[error("{0}")]
+    UnprocessableEntity(String),
+
+    #[error("expected Content-Type application/json")]
+    UnsupportedMediaType,
+
+    #[error("request body is too large")]
+    PayloadTooLarge,
+
     // 500
     #[error(transparent)]
     InternalError(#[from] anyhow::Error),
@@ -77,6 +86,9 @@ impl IntoResponse for ApiError {
                 StatusCode::FORBIDDEN
             }
             ApiError::ValidationError(_) => StatusCode::BAD_REQUEST,
+            ApiError::UnprocessableEntity(_) => StatusCode::UNPROCESSABLE_ENTITY,
+            ApiError::UnsupportedMediaType => StatusCode::UNSUPPORTED_MEDIA_TYPE,
+            ApiError::PayloadTooLarge => StatusCode::PAYLOAD_TOO_LARGE,
             ApiError::InternalError(_) => StatusCode::INTERNAL_SERVER_ERROR,
             ApiError::Conflict(_) => StatusCode::CONFLICT,
             ApiError::ServiceUnavailable(_) => StatusCode::SERVICE_UNAVAILABLE,
